@@ -1,0 +1,14 @@
+import { redirect } from 'next/navigation'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { formatCurrency } from '@/lib/currency'
+
+export default async function AnalyticsPage() {
+  const supabase = await createSupabaseServerClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect('/login?next=/dashboard/analytics')
+  const { data: restaurant } = await supabase.from('restaurants').select('id,name,currency').eq('owner_id', user.id).limit(1).maybeSingle(); if (!restaurant) redirect('/dashboard/setup')
+  const since = new Date(Date.now() - 30 * 86400000).toISOString()
+  const [{ count: visits }, { data: orders }, { data: items }] = await Promise.all([supabase.from('menu_visits').select('*', { count: 'exact', head: true }).eq('restaurant_id', restaurant.id).gte('created_at', since), supabase.from('orders').select('id,total,status,created_at').eq('restaurant_id', restaurant.id).gte('created_at', since), supabase.from('order_items').select('dish_name,quantity,line_total,orders!inner(status,created_at)').eq('restaurant_id', restaurant.id).gte('orders.created_at', since).neq('orders.status', 'cancelled')])
+  const valid = (orders || []).filter(order => order.status !== 'cancelled'); const revenue = valid.reduce((sum, order) => sum + Number(order.total), 0); const average = valid.length ? revenue / valid.length : 0
+  const popular = new Map<string, { quantity: number; revenue: number }>(); for (const item of items || []) { const entry = popular.get(item.dish_name) || { quantity: 0, revenue: 0 }; entry.quantity += item.quantity; entry.revenue += Number(item.line_total); popular.set(item.dish_name, entry) }
+  const top = Array.from(popular.entries()).sort((a,b) => b[1].quantity - a[1].quantity).slice(0, 8)
+  return <main className="analytics-page"><header className="analytics-header"><div><a href="/dashboard">← Dashboard</a><h1>Analytics</h1><p>Real performance for the last 30 days.</p></div><a href="/dashboard/orders">Manage orders →</a></header><section className="analytics-metrics"><div><small>Menu visits</small><b>{visits || 0}</b></div><div><small>Orders</small><b>{valid.length}</b></div><div><small>Revenue</small><b>{formatCurrency(revenue, restaurant.currency)}</b></div><div><small>Average order</small><b>{formatCurrency(average, restaurant.currency)}</b></div></section><section className="analytics-panel"><h2>Popular dishes</h2>{top.length ? <div className="popular-table">{top.map(([name, stats], index) => <div key={name}><span>{index + 1}</span><b>{name}</b><small>{stats.quantity} sold</small><strong>{formatCurrency(stats.revenue, restaurant.currency)}</strong></div>)}</div> : <div className="menu-empty"><b>No sales data yet.</b><p>Popular dishes will appear after completed customer orders.</p></div>}</section></main>
+}

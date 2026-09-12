@@ -1,0 +1,47 @@
+/* FlavorBox design tokens */
+:root {
+  --font-display: "DM Serif Display", Georgia, serif;
+  --font-body: "Manrope", Arial, sans-serif;
+
+  --ink: #101A15;
+  --forest: #123A2A;
+  --forest-deep: #0D2B20;
+  --orange: #F15A00;
+  --orange-hover: #D94F00;
+  --ivory: #FAF7F1;
+  --paper: #FFFDFC;
+  --sage: #E7EDE5;
+  --sage-dark: #677867;
+  --muted: #6D746F;
+  --line: #E9E6DF;
+  --white: #FFFFFF;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 10px 35px rgba(16, 26, 21, 0.08);
+  --shadow-soft: 0 4px 18px rgba(16, 26, 21, 0.06);
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+.btn-primary {
+  background: var(--forest);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+}
+
+.btn-primary:hover { background: var(--forest-deep); }
+
+.text-accent { color: var(--orange); }

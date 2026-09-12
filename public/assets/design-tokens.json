@@ -1,0 +1,33 @@
+{
+  "brand": "FlavorBox (placeholder brand from mockup)",
+  "fonts": {
+    "display": "DM Serif Display",
+    "body": "Manrope",
+    "fallback_display": "Georgia, serif",
+    "fallback_body": "Arial, sans-serif"
+  },
+  "colors": {
+    "ink": "#101A15",
+    "forest": "#123A2A",
+    "forest_deep": "#0D2B20",
+    "orange": "#F15A00",
+    "orange_hover": "#D94F00",
+    "ivory": "#FAF7F1",
+    "paper": "#FFFDFC",
+    "sage": "#E7EDE5",
+    "sage_dark": "#677867",
+    "muted": "#6D746F",
+    "line": "#E9E6DF",
+    "white": "#FFFFFF"
+  },
+  "radius": {
+    "sm": "10px",
+    "md": "16px",
+    "lg": "24px",
+    "pill": "999px"
+  },
+  "shadow": {
+    "card": "0 10px 35px rgba(16, 26, 21, 0.08)",
+    "soft": "0 4px 18px rgba(16, 26, 21, 0.06)"
+  }
+}

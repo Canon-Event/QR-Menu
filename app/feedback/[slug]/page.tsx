@@ -1,0 +1,2 @@
+import { notFound } from 'next/navigation'; import { createSupabaseServerClient } from '@/lib/supabase-server'; import FeedbackForm from '@/components/feedback/FeedbackForm'
+export default async function FeedbackPage({params}:{params: Promise<{slug:string}>}){const supabase=await createSupabaseServerClient();const{data}=await supabase.from('restaurants').select('name,slug').eq('slug',(await params).slug).maybeSingle();if(!data)notFound();return <FeedbackForm slug={data.slug} name={data.name}/>}

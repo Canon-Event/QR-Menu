@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52">
+  <g transform="translate(0 2)">
+    <g stroke="#F15A00" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 5h10v10H5zM25 5h10v10H25zM5 25h10v10H5z"/>
+      <path d="M25 25h4v4h-4zM31 25h4M35 29v6h-6M25 35h4"/>
+    </g>
+  </g>
+  <text x="48" y="30" font-family="Manrope, Arial, sans-serif" font-weight="700" font-size="21" fill="#101A15">FlavorBox</text>
+</svg>

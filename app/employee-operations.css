@@ -1,0 +1,124 @@
+/* Keep live employee operations inside the Employee Management dashboard shell. */
+.ems-grid > div > .ems-next { display: none; }
+.ems-next { display: none; }
+
+/* Subtle EMS icon motion */
+.ems-nav > a:not(.ems-logo) svg,
+.ems-stats article > i,
+.ems-add svg,
+.employee-portals-link svg,
+.ems-mobile-menu svg,
+.ems-menu-close svg {
+  transition: transform .22s ease, color .22s ease, background-color .22s ease;
+  transform-origin: center;
+}
+
+.ems-nav > a:not(.ems-logo):hover svg,
+.ems-nav > a:not(.ems-logo):focus-visible svg {
+  transform: translateX(3px) scale(1.08);
+}
+
+.ems-stats article:hover > i {
+  transform: translateY(-3px) rotate(-4deg) scale(1.06);
+}
+
+.ems-add:hover svg,
+.ems-add:focus-visible svg {
+  transform: rotate(90deg) scale(1.08);
+}
+
+.ems-logo:hover svg {
+  animation: ems-logo-sway .7s ease-in-out;
+}
+
+.ems-mobile-menu:hover svg,
+.ems-menu-close:hover svg {
+  transform: scale(1.1);
+}
+
+@keyframes ems-logo-sway {
+  0%,100% { transform: rotate(0); }
+  35% { transform: rotate(-8deg) scale(1.06); }
+  70% { transform: rotate(7deg) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ems *, .ems *::before, .ems *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* EMS responsive repair: prevent the desktop shell and wide tables from breaking phones/tablets. */
+@media (max-width: 1100px) {
+  .ems-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ems-grid { grid-template-columns: minmax(0, 1fr); }
+  .ems-grid > aside { display: none; }
+  .ems-main { padding: 20px 16px 40px; }
+}
+@media (max-width: 720px) {
+  .ems { display: block; min-width: 0; }
+  .ems-nav { display: none; position: fixed; inset: 0 auto 0 0; z-index: 80; width: min(82vw,290px); height: 100vh; overflow-y: auto; padding: 18px 14px; box-shadow: 16px 0 35px rgba(0,0,0,.16); border-right: 1px solid #e3e8e3; }
+  .ems-nav.ems-menu-open { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
+  .ems-nav .ems-logo { display: flex; }
+  .ems-nav > a { flex: 0 0 auto; padding: 9px 10px; font-size: 10px; }
+  .ems-menu-close { display: block; align-self: flex-end; margin: 0 0 12px; border: 1px solid #d7e1d8; border-radius: 5px; padding: 7px 9px; background: #fff; color: #254e34; font: 800 10px var(--font-manrope); }
+  .ems-header > div:first-child { position: relative; padding-left: 43px; }
+  .ems-mobile-menu { position: absolute; left: 0; top: 1px; display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid #d5e0d6; border-radius: 7px; padding: 0; background: #fff; color: #214b31; }
+  .ems-main { width: 100%; padding: 16px 12px 32px; }
+  .ems-header { flex-wrap: wrap; gap: 10px; align-items: center; }
+  .ems-header > div { width: 100%; }
+  .ems-header h1 { font-size: 20px; line-height: 1.15; }
+  .ems-header p { margin-top: 5px; font-size: 9px; line-height: 1.45; }
+  .ems-header > .employee-portals-link, .ems-header > .ems-add { display: flex; flex: 1 1 0; min-width: 0; min-height: 42px; justify-content: center; margin: 0; padding: 10px 8px; text-align: center; }
+  .ems-header > .employee-portals-link { font-size: 9px; }
+  .ems-header > .ems-add { font-size: 10px; }
+  .ems-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ems-stats article, .ems-stats > .payroll-card { min-height: 76px; padding: 9px; }
+  .ems-stats article > i, .payroll-card > i { width: 34px; height: 34px; flex-basis: 34px; }
+  .ems-directory > header { align-items: stretch; flex-direction: column; }
+  .ems-filters { flex-wrap: wrap; }
+  .ems-filters label { width: 100%; }
+  .ems-filters select { flex: 1 1 42%; min-width: 0; }
+  .ops { border-radius: 8px; }
+  .ops > header { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .ops-tabs { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .ops-attendance form { grid-template-columns: 1fr !important; }
+  .attendance-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .setup-columns, .lb-content { grid-template-columns: 1fr; padding: 13px; }
+  .setup-columns form { grid-template-columns: 1fr; }
+  .setup-columns form button { grid-column: auto; }
+}
+
+/* Public feedback page */
+.feedback-page{min-height:100vh;display:grid;place-items:center;padding:28px 16px;background:linear-gradient(145deg,#f7fbf7,#eef5ed);color:#17261d;font-family:var(--font-manrope),sans-serif}.feedback-page form,.feedback-page section{width:min(100%,520px);border:1px solid #dbe7dc;border-radius:18px;padding:30px;background:#fff;box-shadow:0 20px 55px rgba(30,70,40,.10)}.feedback-kicker{margin:0 0 9px;color:#418053;font-size:12px;font-weight:800}.feedback-page h1{margin:0 0 22px;font-size:28px;letter-spacing:-.04em}.feedback-page section p{color:#627268;line-height:1.65}.feedback-stars{display:flex;gap:8px;margin:0 0 24px}.feedback-stars button{border:0;padding:0;background:transparent;color:#d9e0d8;cursor:pointer;font-size:36px;line-height:1}.feedback-stars button.selected{color:#f4a42b}.feedback-page label{display:flex;flex-direction:column;gap:7px;margin-top:16px;color:#35483b;font-size:12px;font-weight:750}.feedback-page label small{color:#86938a;font-weight:500}.feedback-page input,.feedback-page select,.feedback-page textarea{width:100%;border:1px solid #d8e2d9;border-radius:8px;padding:11px 12px;background:#fcfefc;color:#1c2d22;font:13px var(--font-manrope);outline:0}.feedback-page textarea{min-height:112px;resize:vertical}.feedback-page input:focus,.feedback-page select:focus,.feedback-page textarea:focus{border-color:#438357;box-shadow:0 0 0 3px rgba(67,131,87,.12)}.feedback-page form>button{width:100%;margin-top:22px;border:0;border-radius:8px;padding:13px;background:#084a38;color:#fff;cursor:pointer;font:800 13px var(--font-manrope)}.feedback-page form>button:disabled{opacity:.5;cursor:not-allowed}.feedback-error{margin:15px 0 0;color:#bd3737;font-size:12px}@media(max-width:520px){.feedback-page{padding:18px 12px;place-items:start}.feedback-page form,.feedback-page section{padding:23px 19px}.feedback-page h1{font-size:25px}}
+.ems-stats > article:last-child { display: none; }.ems-stats>.payroll-card{min-height:93px;display:flex;align-items:center;gap:11px;border:1px solid #e2e7e2;border-radius:8px;padding:12px;background:#fff}.payroll-card>i{width:44px;height:44px;display:grid;place-items:center;flex:0 0 44px;border-radius:50%;color:#f1761d;background:#fff0e3;font-style:normal;font-weight:800}.payroll-card>span{display:flex;flex-direction:column;color:#59645d;font-size:8px}.payroll-card button{margin:3px 0;padding:0;border:0;background:none;color:#16221b;cursor:pointer;text-align:left}.payroll-card b{font-size:17px}.payroll-card small{color:#76837a;font-size:7px}
+
+/* The portal link is portalled into the employee header beside Add Employee. */
+.ems-header > .employee-portals-link {
+  position: static;
+  z-index: auto;
+  order: 1;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.ems-header > .ems-add { order: 2; }
+
+@media (max-width: 700px) {
+  .ems-header > .employee-portals-link { margin-left: auto; }
+}
+
+.ems-main > .ops {
+  width: 100%;
+  max-width: 1400px;
+  margin: 14px auto 48px;
+}
+.workforce-setup{margin-top:14px}.setup-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px}.setup-columns h3{margin:0 0 10px;font-size:13px}.setup-columns form{display:grid;grid-template-columns:1fr auto;gap:8px}.setup-columns form input{border:1px solid #d9e2da;border-radius:6px;padding:10px;font:11px var(--font-manrope)}.setup-columns form input:nth-child(2){grid-column:1/-1}.setup-columns form button{border:0;border-radius:6px;padding:10px 12px;background:#084a38;color:#fff;font:800 10px var(--font-manrope)}.setup-list{margin-top:12px;border-top:1px solid #edf0ed}.setup-list>div{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #edf0ed;font-size:11px}.setup-list span,.setup-list p{color:#738077;font-size:10px}@media(max-width:700px){.setup-columns{grid-template-columns:1fr}.setup-columns form{grid-template-columns:1fr}.setup-columns form button{grid-column:1/-1}}
+.attendance-report{margin-top:14px}.attendance-report header>label{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800}.attendance-report header input{border:1px solid #d9e2da;border-radius:5px;padding:7px;font:10px var(--font-manrope)}.attendance-totals{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:14px 18px;border-top:1px solid #edf0ed}.attendance-totals span{padding:10px;border-radius:6px;background:#f7faf7;color:#708076;font-size:9px}.attendance-totals b{display:block;margin-top:4px;color:#1b3021;font-size:14px}.attendance-report-row{grid-template-columns:1.3fr .8fr .8fr .8fr 1.4fr!important;min-width:620px!important}@media(max-width:700px){.attendance-totals{grid-template-columns:repeat(2,1fr)}}
+.leave-balances{margin-top:14px}.leave-balances header label{font-size:10px;font-weight:800}.leave-balances header input,.lb-content select,.lb-content input{border:1px solid #d9e2da;border-radius:6px;padding:9px;background:#fff;font:10px var(--font-manrope)}.lb-content{display:grid;grid-template-columns:280px 1fr;gap:16px;padding:16px}.lb-content form{display:flex;flex-direction:column;gap:8px}.lb-content button{border:0;border-radius:6px;padding:10px;background:#084a38;color:#fff;font:800 10px var(--font-manrope)}.lb-list>div{display:grid;grid-template-columns:1.4fr .8fr 1fr;gap:8px;padding:10px;border-bottom:1px solid #edf0ed;font-size:10px}.lb-list b,.lb-list small{display:block}.lb-list small,.lb-list p{color:#77857c;font-size:9px}@media(max-width:700px){.lb-content{grid-template-columns:1fr}}
+
+@media (max-width: 760px) {
+  .ems-main > .ops { margin-bottom: 28px; }
+}

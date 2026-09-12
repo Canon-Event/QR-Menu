@@ -1,0 +1,4 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+export default function PayrollCostCard(){const[target,setTarget]=useState<Element|null>(null),[amount,setAmount]=useState<number|null>(null);useEffect(()=>setTarget(document.querySelector('.ems-stats')),[]);async function reveal(){const pin=window.prompt('Enter your 6-digit Payroll PIN');if(!pin)return;const r=await fetch('/api/payroll-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',pin})}),j=await r.json();if(j.error)return alert(j.error);setAmount(j.amount)}if(!target)return null;return createPortal(<article className="payroll-card"><i>₹</i><span>Monthly Labor Cost<button onClick={reveal}><b>{amount===null?'₹••••••':`₹${amount.toLocaleString('en-IN')}`}</b></button><small>{amount===null?'Click to reveal with Payroll PIN':'Unlocked for this page session'}</small></span></article>,target)}
