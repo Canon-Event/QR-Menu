@@ -16,7 +16,7 @@ export default function PricingSection() {
 
   return (
     <>
-      <div className="mx-auto mt-4 inline-flex items-center rounded-full border border-[var(--line)] bg-white p-1 text-xs font-semibold shadow-sm" role="group" aria-label="Billing period">
+      <div className="pricing-toggle mx-auto mt-4 inline-flex items-center rounded-full border border-[var(--line)] bg-white p-1 text-xs font-semibold shadow-sm" role="group" aria-label="Billing period">
         <button type="button" onClick={() => setBilling('monthly')} aria-pressed={!isYearly} className={`rounded-full px-5 py-2 transition ${!isYearly ? 'bg-forest text-white' : 'text-ink/70 hover:text-ink'}`}>Monthly</button>
         <button type="button" onClick={() => setBilling('yearly')} aria-pressed={isYearly} className={`rounded-full px-5 py-2 transition ${isYearly ? 'bg-forest text-white' : 'text-ink/70 hover:text-ink'}`}>Yearly</button>
         <span className="mr-1 rounded-full bg-sage px-2 py-1 text-[10px] text-forest/80">Save 20%</span>

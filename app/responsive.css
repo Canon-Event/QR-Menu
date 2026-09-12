@@ -123,6 +123,193 @@ html { scroll-padding-top: 24px; }
   .qr-control-actions > * { flex: 1; justify-content: center; text-align: center; }
   .profile div { max-width: 110px; overflow-wrap: anywhere; }
 }
+
+/* Dark theme contrast pass. Keep authored menu templates untouched; these rules
+   cover the shared marketing and dashboard UI around them. */
+html.dark .marketing-footer,
+html.dark .pricing-cards article,
+html.dark .pricing-cards > div,
+html.dark .contact-faq details,
+html.dark .contact-message,
+html.dark .contact-details,
+html.dark .contact-layout > div,
+html.dark .dashboard-mobile-navigation {
+  color: #eef5ef;
+}
+html.dark .marketing-footer,
+html.dark .pricing-cards article,
+html.dark .contact-faq details,
+html.dark .contact-message,
+html.dark .contact-details,
+html.dark .dashboard-mobile-navigation,
+html.dark .marketing-footer form {
+  background-color: #1a241f;
+  border-color: #334238;
+}
+html.dark .pricing-cards article p,
+html.dark .pricing-cards article li,
+html.dark .pricing-cards article .text-ink\/60,
+html.dark .pricing-cards article .text-ink\/65,
+html.dark .pricing-cards article .text-ink\/75,
+html.dark .contact-faq details > p,
+html.dark .contact-message > p,
+html.dark .contact-details p,
+html.dark .marketing-footer p,
+html.dark .marketing-footer a,
+html.dark .marketing-footer input,
+html.dark .marketing-footer input::placeholder {
+  color: #b8c7bc;
+}
+html.dark .pricing-cards article h2,
+html.dark .pricing-cards article strong,
+html.dark .pricing-cards article span:not(.text-brand-500),
+html.dark .contact-faq summary,
+html.dark .marketing-footer h2,
+html.dark .marketing-footer h3,
+html.dark .marketing-footer .text-forest,
+html.dark .contact-message h2 {
+  color: #f1f7f2;
+}
+html.dark .pricing-cards article .border-\[var\(--line\)\],
+html.dark .contact-faq details > p,
+html.dark .marketing-footer > div:last-child {
+  border-color: #334238;
+}
+html.dark .pricing-toggle {
+  background: #1a241f;
+  border-color: #334238;
+}
+html.dark .pricing-toggle button:not(.bg-forest) { color: #c4d2c7; }
+html.dark .pricing-toggle span { color: #cce0cf; background: #294334; }
+html.dark .contact-field {
+  border-color: #405046;
+  background: #17211b;
+  color: #eef5ef;
+}
+html.dark .contact-field::placeholder {
+  color: #91a196;
+  opacity: 1;
+}
+html.dark .button-light {
+  background: #f4faf5 !important;
+  color: #123a2a !important;
+}
+html.dark .button-outline {
+  border-color: #6b8874;
+  color: #dce9df;
+}
+html.dark .marketing-footer .flex.h-9 {
+  border-color: #52665a;
+  color: #dce9df;
+}
+
+html.dark .dashboard-layout,
+html.dark .employee-page,
+html.dark .employee-route-shell,
+html.dark .ems,
+html.dark .ops,
+html.dark .portal-links-page,
+html.dark .leave-portal-page {
+  background: #101713;
+  color: #eef5ef;
+}
+html.dark .dashboard-sidebar { background: #092f24; border-color: #294638; }
+html.dark .dashboard-nav a,
+html.dark .dashboard-nav-group p,
+html.dark .employee-nav > a,
+html.dark .ems-nav > a { color: #c4d4c8; }
+html.dark .dashboard-nav a:hover,
+html.dark .ems-nav > a:hover { background: #1b4d3b; color: #fff !important; }
+html.dark .dashboard-mobile-navigation nav a { color: #d7e5da; }
+html.dark .dashboard-mobile-navigation summary { color: #eef5ef; }
+html.dark .dashboard-panel,
+html.dark .metric-card,
+html.dark .employee-panel,
+html.dark .employee-stats > div,
+html.dark .ems-panel,
+html.dark .ops,
+html.dark .leave-portal-page > section,
+html.dark .portal-links-page > section,
+html.dark .employee-modal form,
+html.dark .ems-modal > form {
+  background: #1a241f;
+  border-color: #334238;
+  color: #eef5ef;
+}
+html.dark .inventory-row,
+html.dark .recent-item,
+html.dark .employee-table-head,
+html.dark .directory article,
+html.dark .ems-table > .head,
+html.dark .ems-table > .row,
+html.dark .ops-head,
+html.dark .ops-row,
+html.dark .leave-panel article,
+html.dark .monthly-record > div {
+  border-color: #334238;
+  color: #dce9df;
+}
+html.dark .inventory-row p,
+html.dark .inventory-row small,
+html.dark .recent-item small,
+html.dark .employee-person small,
+html.dark .employee-stats small,
+html.dark .ems-header p,
+html.dark .ems-stats small,
+html.dark .ems-next p,
+html.dark .ops-row small,
+html.dark .ops header p,
+html.dark .leave-panel article small,
+html.dark .portal-links-page p,
+html.dark .leave-portal-page header p,
+html.dark .leave-portal-page footer {
+  color: #aab9ae;
+}
+html.dark .employee-stats span,
+html.dark .ems-stats article > span,
+html.dark .ems-filters label,
+html.dark .ops-attendance label,
+html.dark .employee-modal label,
+html.dark .ems-form-grid label,
+html.dark .leave-portal-form label {
+  color: #c7d5ca;
+}
+html.dark .inventory-row,
+html.dark .recent-item,
+html.dark .ems-edit,
+html.dark .ops-row button,
+html.dark .ops-tabs button,
+html.dark .employee-panel header > button,
+html.dark .employee-portals-link,
+html.dark .portal-links-page input,
+html.dark .leave-portal-form input,
+html.dark .leave-portal-form select,
+html.dark .leave-portal-form textarea,
+html.dark .employee-modal input,
+html.dark .employee-modal select,
+html.dark .employee-modal textarea,
+html.dark .ems-form-grid input,
+html.dark .ems-form-grid select,
+html.dark .ems-filters select {
+  background: #202d26;
+  border-color: #405046;
+  color: #eef5ef;
+}
+html.dark .ems-nav { background: #17211b; border-color: #334238; }
+html.dark .ems-nav > a.active { background: #294d39; color: #f0fff2; }
+html.dark .ems-panel h2,
+html.dark .employee-panel h2,
+html.dark .employee-stats b,
+html.dark .ems-stats b,
+html.dark .portal-links-page h1,
+html.dark .leave-portal-page h1 { color: #f1f7f2; }
+html.dark .auth-secondary button,
+html.dark .auth-footer a,
+html.dark .portal-links-page article > a,
+html.dark .attendance-overview > a { color: #9dd3a7; }
+html.dark .auth-footer { border-color: #334238; }
+html.dark :is(.auth-form input, .setup-form input, .slug-input)::placeholder,
+html.dark :is(.employee-modal input, .ems-form-grid input, .leave-portal-form input)::placeholder { color: #82948a; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
