@@ -23,7 +23,9 @@ export default function ContactForm() {
       if (!response.ok) throw new Error(result.error || 'Unable to send your message.')
       form.reset()
       setState('success')
-      setMessage('Thanks. We received your message and will be in touch soon.')
+      setMessage(result.notificationSent === false
+        ? 'Your message was saved, but the email notification could not be sent. Please try again later.'
+        : 'Thanks. We received your message and will be in touch soon.')
     } catch (error) {
       setState('error')
       setMessage(error instanceof Error ? error.message : 'Unable to send your message.')

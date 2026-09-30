@@ -37,10 +37,10 @@ export async function PATCH(request: Request) {
     if (!currency) return NextResponse.json({ error: 'Select a supported currency.' }, { status: 400 })
     Object.assign(updates, { name, slug, description: description || null, address: address || null, phone: phone || null, logo_url: logoUrl || null, currency })
   } else if (section === 'template') {
-    if (!['A', 'B', 'C'].includes(body?.template)) return NextResponse.json({ error: 'Select a valid template.' }, { status: 400 })
+    if (!['A', 'B', 'C', 'D'].includes(body?.template)) return NextResponse.json({ error: 'Select a valid template.' }, { status: 400 })
     updates.template = body.template
   } else if (section === 'template_customization') {
-    const template = ['A', 'B', 'C'].includes(body?.template) ? body.template : null
+    const template = ['A', 'B', 'C', 'D'].includes(body?.template) ? body.template : null
     const rawFont = typeof body?.font === 'string' ? body.font.trim() : ''
     const font = MENU_FONT_KEYS.includes(rawFont as typeof MENU_FONT_KEYS[number]) || /^[A-Za-z0-9 .'-]{1,100}$/.test(rawFont) ? rawFont : null
     const primaryColor = typeof body?.primaryColor === 'string' && colorPattern.test(body.primaryColor) ? body.primaryColor.toLowerCase() : null

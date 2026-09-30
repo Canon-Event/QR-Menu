@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from 'react'
 import type { Category, Dish } from '@/types'
 
 type Props = { initialCategories: Category[]; initialDishes: Dish[]; restaurantName: string; menuUrl: string }
@@ -22,10 +22,41 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   const [draft, setDraft] = useState<DishDraft>(emptyDish)
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
+  const csvInput = useRef<HTMLInputElement>(null)
 
   const grouped = useMemo(() => categories.map(category => ({ category, dishes: dishes.filter(dish => dish.category_id === category.id) })), [categories, dishes])
   const uncategorized = dishes.filter(dish => !dish.category_id || !categories.some(category => category.id === dish.category_id))
   const notify = (kind: 'error' | 'success', text: string) => setMessage({ kind, text })
+
+  function downloadCsvTemplate() {
+    const csv = '\uFEFF"title","category","description","price","is_veg","is_available"\r\n"Paneer Tikka","Starters","Chargrilled paneer with peppers","295","yes","yes"\r\n'
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'menu-import-template.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function importCsv(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!confirm('Import this CSV? Its dishes will be appended to your current menu.')) { event.target.value = ''; return }
+    setBusy('csv'); setMessage(null)
+    try {
+      const form = new FormData(); form.set('file', file)
+      const response = await fetch('/api/menu/csv', { method: 'POST', body: form })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const details = Array.isArray(result.errors) ? ` ${result.errors.slice(0, 3).join(' ')}` : ''
+        throw new Error(`${result.error || 'The CSV could not be imported.'}${details}`)
+      }
+      setCategories(items => [...items, ...(result.categories ?? [])])
+      setDishes(items => [...items, ...(result.dishes ?? [])])
+      notify('success', `Imported ${result.imported} ${result.imported === 1 ? 'dish' : 'dishes'}${result.categories?.length ? ` and created ${result.categories.length} ${result.categories.length === 1 ? 'category' : 'categories'}` : ''}.`)
+    } catch (error) { notify('error', error instanceof Error ? error.message : 'The CSV could not be imported.') }
+    finally { setBusy(''); event.target.value = '' }
+  }
 
   async function saveCategory(event: FormEvent) {
     event.preventDefault(); setBusy('category'); setMessage(null)
@@ -110,7 +141,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
 
   return <main className="menu-admin-page"><header className="menu-admin-topbar"><div><a href="/dashboard">← Dashboard</a><h1>{restaurantName} menu</h1><p>Manage what guests see when they scan your QR code.</p></div><a className="outline-button-large" href={menuUrl} target="_blank" rel="noreferrer">View live menu ↗</a></header>
     {message && <div className={`menu-flash ${message.kind}`} role="status">{message.text}<button aria-label="Dismiss" onClick={() => setMessage(null)}>×</button></div>}
-    <div className="menu-admin-grid"><section className="menu-admin-main"><div className="menu-section-heading"><div><h2>Categories & dishes</h2><p>{dishes.length} dishes across {categories.length} categories</p></div></div>
+    <div className="menu-admin-grid"><section className="menu-admin-main"><div className="menu-section-heading"><div><h2>Categories & dishes</h2><p>{dishes.length} dishes across {categories.length} categories</p></div><div className="menu-csv-tools"><input ref={csvInput} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><button type="button" onClick={downloadCsvTemplate}>CSV template</button><button type="button" disabled={busy === 'csv'} onClick={() => csvInput.current?.click()}>{busy === 'csv' ? 'Importing…' : 'Import CSV'}</button><a href="/api/menu/csv">Export CSV</a></div></div>
       {!categories.length && !dishes.length && <div className="menu-empty"><b>Your menu is ready for its first item.</b><p>Create a category, then add a dish using the forms on this page.</p></div>}
       {grouped.map(({ category, dishes: categoryDishes }, index) => <section className="category-block" key={category.id}><header><div><h3>{category.name}</h3><small>{categoryDishes.length} {categoryDishes.length === 1 ? 'dish' : 'dishes'}</small></div><div className="category-actions"><button title="Move up" disabled={index === 0 || busy === 'sort-category'} onClick={() => moveCategory(index, -1)}>↑</button><button title="Move down" disabled={index === categories.length - 1 || busy === 'sort-category'} onClick={() => moveCategory(index, 1)}>↓</button><button onClick={() => { setEditingCategory(category.id); setCategoryName(category.name) }}>Rename</button><button className="danger-link" disabled={busy === category.id} onClick={() => removeCategory(category)}>Delete</button></div></header>{categoryDishes.length ? categoryDishes.map((dish, dishIndex) => <DishRow dish={dish} group={categoryDishes} index={dishIndex} key={dish.id} />) : <p className="category-empty">No dishes in this category yet.</p>}</section>)}
       {uncategorized.length > 0 && <section className="category-block"><header><div><h3>Uncategorized</h3><small>{uncategorized.length} dishes</small></div></header>{uncategorized.map((dish, dishIndex) => <DishRow dish={dish} group={uncategorized} index={dishIndex} key={dish.id} />)}</section>}

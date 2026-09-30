@@ -7,7 +7,7 @@ export const TIER_FEATURES = {
     hasVideos: false,
     has3D: false,
     freeCustomization: false,
-    baseTemplates: 3,
+    baseTemplates: 4,
   },
   2: {
     label: 'Menu + Media',
@@ -15,7 +15,7 @@ export const TIER_FEATURES = {
     hasVideos: true,
     has3D: false,
     freeCustomization: false,
-    baseTemplates: 3,
+    baseTemplates: 4,
   },
   3: {
     label: '3D Experience',
@@ -23,7 +23,7 @@ export const TIER_FEATURES = {
     hasVideos: true,
     has3D: true,
     freeCustomization: true,
-    baseTemplates: 3,
+    baseTemplates: 4,
   },
 } as const
 
@@ -40,7 +40,7 @@ export function canUseTemplate(
   template: string,
   addons: string[]
 ): boolean {
-  const base = ['A', 'B', 'C']
+  const base = ['A', 'B', 'C', 'D']
   if (base.includes(template)) return true
   // Premium templates unlocked via addon
   return hasAddon(addons, `template_${template.toLowerCase()}`)

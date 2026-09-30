@@ -8,6 +8,7 @@ import CustomerMenuActions from '@/components/menu/CustomerMenuActions'
 import { googleFontStylesheetUrl, menuDesignVariables } from '@/lib/menu-fonts'
 import GreenBistroMenu from '@/components/menu/GreenBistroMenu'
 import ItalianMenu from '@/components/menu/ItalianMenu'
+import BloomBrunchMenu from '@/components/menu/BloomBrunchMenu'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -58,7 +59,7 @@ export default async function MenuPage({ params }: Props) {
   const { restaurant } = data
   const design = restaurant.template_settings?.[restaurant.template] || {}
 
-  const menu = restaurant.template === 'A' ? <MenuTier1 data={data} /> : restaurant.template === 'B' ? <GreenBistroMenu data={data} /> : restaurant.template === 'C' ? <ItalianMenu data={data} /> : restaurant.tier === 3 ? <MenuTier3 data={data} /> : restaurant.tier === 2 ? <MenuTier2 data={data} /> : <MenuTier1 data={data} />
+  const menu = restaurant.template === 'A' ? <MenuTier1 data={data} /> : restaurant.template === 'B' ? <GreenBistroMenu data={data} /> : restaurant.template === 'C' ? <ItalianMenu data={data} /> : restaurant.template === 'D' ? <BloomBrunchMenu data={data} /> : restaurant.tier === 3 ? <MenuTier3 data={data} /> : restaurant.tier === 2 ? <MenuTier2 data={data} /> : <MenuTier1 data={data} />
   const fontStylesheet = googleFontStylesheetUrl(design.font)
   return <div className={`menu-theme menu-theme-${restaurant.template.toLowerCase()}`} style={menuDesignVariables(design, restaurant.template) as React.CSSProperties}>{fontStylesheet && <link rel="stylesheet" href={fontStylesheet} />}{menu}<CustomerMenuActions restaurant={restaurant} dishes={data.dishes} /></div>
 }

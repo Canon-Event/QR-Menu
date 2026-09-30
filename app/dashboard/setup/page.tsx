@@ -8,6 +8,7 @@ const templates = [
   { id: 'A', name: 'Classic', detail: 'Warm and familiar' },
   { id: 'B', name: 'Minimal', detail: 'Clean and focused' },
   { id: 'C', name: 'Italian', detail: 'Romantic and botanical' },
+  { id: 'D', name: 'Bloom & Brunch', detail: 'Bright watercolor café' },
 ]
 
 export default function RestaurantSetupPage() {

@@ -46,6 +46,8 @@ export default function TemplateEditorPreviewBridge({ template }: { template: st
       if (cover) cover.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : cover.dataset.defaultSrc || '/templates/green-bistro/cover-background-v2.png'
       const italianCover = document.querySelector<HTMLImageElement>('.italian-cover-background')
       if (italianCover) italianCover.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : italianCover.dataset.defaultSrc || '/templates/italian/italian-cover-background-v1.png'
+      const bloomCover = document.querySelector<HTMLImageElement>('.bloom-cover-art')
+      if (bloomCover) bloomCover.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : bloomCover.dataset.defaultSrc || '/templates/bloom-brunch/bloom-brunch-cover-v1.png'
       const menuImages = [design.menuImageOne, design.menuImageTwo, design.menuImageThree, design.menuImageFour]
       document.querySelectorAll<HTMLImageElement>('[data-template-image-slot]').forEach(image => {
         const slot = Number(image.dataset.templateImageSlot || 0)
@@ -54,6 +56,8 @@ export default function TemplateEditorPreviewBridge({ template }: { template: st
       })
       const back = document.querySelector<HTMLImageElement>('.bistro-back-image')
       if (back) back.src = design.backImageUrl?.startsWith('https://') ? design.backImageUrl : back.dataset.defaultSrc || '/templates/green-bistro/back-background-v2.png'
+      const bloomBack = document.querySelector<HTMLImageElement>('.bloom-back-art')
+      if (bloomBack) bloomBack.src = design.backImageUrl?.startsWith('https://') ? design.backImageUrl : bloomBack.dataset.defaultSrc || '/templates/bloom-brunch/bloom-brunch-back-v1.png'
       Object.entries(design).forEach(([field, value]) => {
         if (typeof value !== 'string' || field.endsWith('Url') || field.startsWith('menuImage')) return
         document.querySelectorAll<HTMLElement>(`[data-template-field="${field}"]`).forEach(element => { element.textContent = value })

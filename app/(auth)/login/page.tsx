@@ -3,10 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { IconArrowRight } from '@/components/marketing/Icons'
-
-const supabase = createSupabaseBrowserClient()
 
 export default function LoginPage() {
   const router = useRouter()
@@ -29,16 +26,10 @@ export default function LoginPage() {
     setBusy(true)
     setError('')
     setMessage('')
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      },
-    })
+    const response = await fetch('/api/auth/request-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
     setBusy(false)
-    if (authError) {
-      setError(authError.message)
+    if (!response.ok) {
+      setError((await response.json().catch(() => null))?.error || 'Unable to process your request.')
       return
     }
     setStep('code')
@@ -50,10 +41,10 @@ export default function LoginPage() {
     event.preventDefault()
     setBusy(true)
     setError('')
-    const { error: authError } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' })
+    const response = await fetch('/api/auth/verify-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, token: code }) })
     setBusy(false)
-    if (authError) {
-      setError('That code is invalid or expired. Request a new one and try again.')
+    if (!response.ok) {
+      setError((await response.json().catch(() => null))?.error || 'Unable to verify this code.')
       return
     }
     router.push('/dashboard')

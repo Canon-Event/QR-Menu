@@ -17,7 +17,7 @@ create table restaurants (
   qr_background text not null default '#ffffff' check (qr_background ~ '^#[0-9a-fA-F]{6}$'),
   qr_margin int not null default 2 check (qr_margin between 0 and 8),
   tier        int not null default 1,        -- 1 | 2 | 3
-  template    text not null default 'A',     -- 'A' | 'B' | 'C' | premium keys
+  template    text not null default 'A',     -- 'A' | 'B' | 'C' | 'D' | premium keys
   custom_css  text,                          -- tier 3 free / others paid unlock
   is_active   boolean default true,
   created_at  timestamptz default now()

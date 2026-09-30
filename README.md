@@ -44,3 +44,9 @@ npm run dev
 
 Upload `.glb` files to Supabase storage bucket `dish-models`.  
 Set `model_url` on the dish to the public URL.
+
+## Menu CSV import and export
+
+The menu dashboard can download a starter template, import up to 500 dishes from a CSV file, and export the current menu. Imports append to the existing menu and automatically create missing categories.
+
+Supported columns are `title`, `category`, `description`, `price`, `is_veg`, and `is_available`. Only `title` is required; blank prices become `0`, and blank boolean fields default to `yes`. Friendly aliases such as `name`, `category_name`, and `desc` are also accepted.

@@ -4,7 +4,7 @@ import MenuTemplateEditor from '@/components/dashboard/MenuTemplateEditor'
 
 export default async function TemplateEditorPage({ params }: { params: Promise<{ template: string }> }) {
   const template = (await params).template.toUpperCase()
-  if (!['A', 'B', 'C'].includes(template)) notFound()
+  if (!['A', 'B', 'C', 'D'].includes(template)) notFound()
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect(`/login?next=/dashboard/templates/${template}/edit`)

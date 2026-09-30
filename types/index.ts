@@ -14,7 +14,7 @@ export interface Restaurant {
   qr_background: string
   qr_margin: number
   tier: Tier
-  template: 'A' | 'B' | 'C' | string
+  template: 'A' | 'B' | 'C' | 'D' | string
   custom_css?: string
   template_settings?: Record<string, {
     font?: string

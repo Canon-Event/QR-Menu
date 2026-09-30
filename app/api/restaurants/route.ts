@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const name = typeof body?.name === 'string' ? body.name.trim() : ''
   const slug = typeof body?.slug === 'string' ? body.slug.trim().toLowerCase() : ''
   const logoUrl = typeof body?.logoUrl === 'string' ? body.logoUrl.trim() : ''
-  const template = body?.template === 'B' || body?.template === 'C' ? body.template : 'A'
+  const template = ['A', 'B', 'C', 'D'].includes(body?.template) ? body.template : 'A'
 
   if (ownerName.length < 2 || ownerName.length > 100) return NextResponse.json({ error: 'Your name must be between 2 and 100 characters.' }, { status: 400 })
   if (name.length < 2 || name.length > 100) return NextResponse.json({ error: 'Restaurant name must be between 2 and 100 characters.' }, { status: 400 })
