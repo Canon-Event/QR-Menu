@@ -4,11 +4,11 @@ import Link from 'next/link'
 import {
   IconFacebook,
   IconInstagram,
-  IconLeaf,
   IconLinkedin,
   IconSend,
   IconTwitter,
 } from '@/components/marketing/Icons'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 const columns = [
   {
@@ -39,12 +39,7 @@ export default function Footer() {
         <div className="marketing-footer-grid">
           <div>
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-brand-500 text-brand-500">
-                <IconLeaf className="h-5 w-5" />
-              </span>
-              <span className="text-2xl font-extrabold tracking-tight">
-                <span className="text-forest">QR</span> <span className="italic text-brand-500">MENU</span>
-              </span>
+              <BrandLogo className="wiit-logo-footer" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-6 text-ink/60">
               Smart, Simple, Contactless. Create beautiful digital menus and elevate your restaurant experience.
@@ -100,7 +95,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[var(--line)] pt-6 text-xs text-ink/50 sm:flex-row">
-          <p>© {new Date().getFullYear()} QR Menu. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} WIIT. All rights reserved.</p>
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 items-center rounded-md border border-[var(--line)] px-2.5 text-[11px] font-black italic text-[#1A1F71]">VISA</span>
             <span className="flex h-7 w-11 items-center justify-center rounded-md border border-[var(--line)]">

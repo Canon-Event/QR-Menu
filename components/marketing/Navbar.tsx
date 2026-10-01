@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import ThemeToggle from '@/components/ui/ThemeToggle'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 const NAV_LINKS = [
   { label: 'Home', href: '/' },
@@ -57,7 +58,7 @@ export default function Navbar({
   return (
     <header className="marketing-navbar">
       <Link href="/" className="flex items-center gap-2">
-        <img src="/assets/brand/logo-lockup.svg" alt="FlavorBox" className="h-7 w-auto" />
+        <BrandLogo className="wiit-logo-navbar" />
       </Link>
 
       <nav aria-label="Main navigation" className="marketing-desktop-nav">

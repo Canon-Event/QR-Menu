@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconArrowRight, IconExternalLink } from '@/components/marketing/Icons'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 const templates = [
   { id: 'A', name: 'Classic', detail: 'Warm and familiar' },
@@ -43,7 +44,7 @@ export default function RestaurantSetupPage() {
 
   return (
     <main className="setup-page">
-      <header className="setup-topbar"><a href="/" className="auth-brand"><span className="brand-mark">✧</span> QR MENU</a><a href="/dashboard" className="setup-exit">Back to dashboard <IconExternalLink className="h-3 w-3" /></a></header>
+      <header className="setup-topbar"><a href="/" className="auth-brand"><BrandLogo className="wiit-logo-setup" /></a><a href="/dashboard" className="setup-exit">Back to dashboard <IconExternalLink className="h-3 w-3" /></a></header>
       <div className="setup-layout">
         <section className="setup-card">
           <div className="setup-heading"><p className="dashboard-kicker">Step 1 of 2 · Restaurant profile</p><h1>Make your menu yours.</h1><p>Set up the basics now. You can update every detail later from your dashboard.</p></div>

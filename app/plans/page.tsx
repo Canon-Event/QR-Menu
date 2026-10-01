@@ -10,7 +10,7 @@ const footerItems = [
   { icon: IconShieldCheck, title: 'Secure & Reliable', text: 'Your data is safe with us.' },
 ]
 
-export const metadata = { title: 'Plans — FlavorBox', description: 'Choose a FlavorBox digital menu plan for your restaurant.' }
+export const metadata = { title: 'Plans — WIIT', description: 'Choose a WIIT digital menu plan for your restaurant.' }
 
 export default function PlansPage() {
   return (

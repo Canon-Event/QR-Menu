@@ -16,7 +16,7 @@ import {
 } from '@/components/marketing/Icons'
 
 export const metadata = {
-  title: 'QR Menu for Restaurants and Cafés | FlavorBox',
+  title: 'QR Menu for Restaurants and Cafés | WIIT',
   description: 'Create a beautiful digital QR menu for your restaurant or café. Add dishes, update prices, and share your menu with one easy-to-scan QR code.',
 }
 
@@ -62,7 +62,7 @@ export default function HomePage() {
           <div className="home-hero-image relative mx-auto w-full max-w-[440px]">
            <Image
               src="/assets/images/hero-food-hd.png"
-              alt="A plated dish on a restaurant table with a FlavorBox QR menu card"
+              alt="A plated dish on a restaurant table with a WIIT QR menu card"
               width={989}
               height={1029}
               priority

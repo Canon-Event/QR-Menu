@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { IconArrowRight } from '@/components/marketing/Icons'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -56,7 +57,7 @@ export default function LoginPage() {
       <div className="auth-decoration auth-decoration-one" />
       <div className="auth-decoration auth-decoration-two" />
       <section className="auth-card" aria-labelledby="auth-title">
-        <Link href="/" className="auth-brand"><span className="brand-mark">✧</span> QR MENU</Link>
+        <Link href="/" className="auth-brand"><BrandLogo className="wiit-logo-auth" /></Link>
         <div className="auth-heading"><p className="dashboard-kicker">Owner access</p><h1 id="auth-title">Welcome back</h1><p>Sign in to manage your digital menu.</p></div>
         {step === 'email' ? (
           <form onSubmit={sendCode} className="auth-form">
@@ -75,7 +76,7 @@ export default function LoginPage() {
         )}
         {message && <p className="auth-message" role="status">{message}</p>}
         {error && <p className="auth-error" role="alert">{error}</p>}
-        <p className="auth-footer">New to QR Menu? <Link href="/register">Create your account</Link></p>
+        <p className="auth-footer">New to WIIT? <Link href="/register">Create your account</Link></p>
       </section>
     </main>
   )

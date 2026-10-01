@@ -23,7 +23,7 @@ async function sendBrevoNotification(details: { name: string; email: string; pho
       method: 'POST',
       headers: { accept: 'application/json', 'api-key': apiKey, 'content-type': 'application/json' },
       body: JSON.stringify({
-        sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME || 'FlavorBox' },
+        sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME || 'WIIT' },
         to: [{ email: recipientEmail }],
         replyTo: { email: details.email, name: details.name },
         subject: `Contact form: ${details.subject}`,

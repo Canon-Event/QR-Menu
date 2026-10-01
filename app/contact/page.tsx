@@ -11,13 +11,13 @@ const faqs = [
   ['Do you offer customer support?', 'Yes. Our support team can help with setup, menu updates, and plan questions.'],
   ['Can I customize my menu?', 'You can customize your menu content and, depending on your plan, its branding and template.'],
   ['Can I update my menu anytime?', 'Yes. Changes are published in real time without needing to reprint your QR code.'],
-  ['Is there a setup fee?', 'No. There is no setup fee for starting a FlavorBox account.'],
+  ['Is there a setup fee?', 'No. There is no setup fee for starting a WIIT account.'],
   ['Is my data secure?', 'We use Supabase security controls and server-side validation to protect your account data.'],
 ]
 
 export const metadata = {
-  title: 'Contact Us — FlavorBox',
-  description: 'Contact the FlavorBox support team for help with your digital menu.',
+  title: 'Contact Us — WIIT',
+  description: 'Contact the WIIT support team for help with your digital menu.',
 }
 
 export default function ContactPage() {
@@ -34,7 +34,7 @@ export default function ContactPage() {
             <p className="mt-5 max-w-sm text-sm leading-6 text-ink/65">Have questions or need help? Our team is here to assist you. Let&apos;s build something better together.</p>
           </div>
             <div className="contact-details">
-              <ContactDetail icon={IconMail} title="Email Us" text="support@flavorbox.com" />
+              <ContactDetail icon={IconMail} title="Email Us" text="support@wiit.app" />
               <ContactDetail icon={IconPhone} title="Call Us" text="+91 98765 43210" />
               <ContactDetail icon={IconRefresh} title="Business Hours" text="Mon - Sat: 9:00 AM - 7:00 PM" />
               <ContactDetail icon={IconMapPin} title="Our Office" text="123, Business Park, Sector 62, Noida, Uttar Pradesh - 201309" />
@@ -50,7 +50,7 @@ export default function ContactPage() {
         <section className="contact-faq page-shell py-10 sm:py-14">
         <div className="text-center"><p className="eyebrow">FAQ</p><h2 className="serif-heading mt-1 text-3xl sm:text-4xl">Frequently Asked Questions</h2><p className="mt-2 text-xs text-ink/60">Find answers to the most common questions.</p></div>
         <div className="mx-auto mt-7 grid max-w-[900px] gap-2 md:grid-cols-2"><div className="space-y-2">{faqs.filter((_, index) => index % 2 === 0).map(([question, answer]) => <FaqItem key={question} question={question} answer={answer} />)}</div><div className="space-y-2">{faqs.filter((_, index) => index % 2 !== 0).map(([question, answer]) => <FaqItem key={question} question={question} answer={answer} />)}</div></div>
-            <div className="mx-auto mt-3 flex max-w-[900px] flex-col items-center justify-between gap-4 rounded-md border border-ink/15 bg-[var(--surface-warm)] px-6 py-4 sm:flex-row"><div className="flex items-center gap-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-forest text-white"><IconHeadset className="h-5 w-5" /></span><div><p className="font-serif text-lg">Still have questions?</p><p className="text-[10px] text-ink/60">Our support team is here to help you.</p></div></div><a href="mailto:support@flavorbox.com" className="button-dark px-5 py-2 text-xs">Chat with our support team <IconChevronRight className="h-4 w-4" /></a></div>
+            <div className="mx-auto mt-3 flex max-w-[900px] flex-col items-center justify-between gap-4 rounded-md border border-ink/15 bg-[var(--surface-warm)] px-6 py-4 sm:flex-row"><div className="flex items-center gap-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-forest text-white"><IconHeadset className="h-5 w-5" /></span><div><p className="font-serif text-lg">Still have questions?</p><p className="text-[10px] text-ink/60">Our support team is here to help you.</p></div></div><a href="mailto:support@wiit.app" className="button-dark px-5 py-2 text-xs">Chat with our support team <IconChevronRight className="h-4 w-4" /></a></div>
       </section>
 
       <Footer />

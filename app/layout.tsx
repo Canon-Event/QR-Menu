@@ -17,8 +17,16 @@ const patrickHand = Patrick_Hand({ subsets: ['latin'], weight: '400', variable: 
 const bodoniModa = Bodoni_Moda({ subsets: ['latin'], style: ['normal', 'italic'], variable: '--font-bodoni-moda' })
 
 export const metadata: Metadata = {
-  title: 'FlavorBox — Digital Menus, Just a Scan Away',
+  title: 'WIIT — Digital Menus, Just a Scan Away',
   description: 'Create a digital menu for your restaurant or café. Contactless. Fast. Beautiful.',
+  icons: {
+    icon: [
+      { url: '/assets/brand/wiit-favicon-32.png?v=2', sizes: '32x32', type: 'image/png' },
+      { url: '/assets/brand/wiit-app-icon-512.png?v=2', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/assets/brand/wiit-favicon-32.png?v=2',
+    apple: [{ url: '/assets/brand/wiit-apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' }],
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

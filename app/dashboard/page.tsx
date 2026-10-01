@@ -4,6 +4,7 @@ import { TIER_FEATURES } from '@/lib/tier'
 import type { Dish, Restaurant, Tier } from '@/types'
 import DashboardIdentity from '@/components/dashboard/DashboardIdentity'
 import ThemeToggle from '@/components/ui/ThemeToggle'
+import BrandLogo from '@/components/ui/BrandLogo'
 import { IconArrowRight, IconDownloadSmall, IconExternalLink } from '@/components/marketing/Icons'
 
 const navGroups = [
@@ -55,7 +56,7 @@ export default async function DashboardPage() {
 
   return <div className="dashboard-layout">
     <aside className="dashboard-sidebar">
-      <a href="/dashboard" className="dashboard-brand"><span className="brand-mark">✧</span><span>QR MENU</span></a>
+      <a href="/dashboard" className="dashboard-brand"><BrandLogo className="wiit-logo-dashboard" /></a>
       <nav className="dashboard-nav">
         <a className="dashboard-nav-active" href="/dashboard"><Icon>⌂</Icon>Dashboard</a>
         {navGroups.map((group) => <div className="dashboard-nav-group" key={group.label}><p>{group.label}</p>{group.items.map(([label, href, icon]) => <a href={href} key={label}><Icon>{icon}</Icon>{label}{label === '3D models' && <small>PRO</small>}</a>)}</div>)}
@@ -71,7 +72,7 @@ export default async function DashboardPage() {
           <a href="/contact">Contact support</a>
         </nav>
       </details>
-      <header className="dashboard-topbar"><div className="mobile-brand"><span className="brand-mark">✧</span> QR MENU</div><div className="topbar-actions"><ThemeToggle /><a href={`/menu/${restaurant.slug}`} target="_blank" rel="noreferrer">View restaurant <IconExternalLink className="h-3 w-3" /></a><button aria-label="Notifications">♧<i /></button><DashboardIdentity displayName={userName} restaurantName={restaurant.name} /></div></header>
+      <header className="dashboard-topbar"><div className="mobile-brand"><BrandLogo className="wiit-logo-mobile" /></div><div className="topbar-actions"><ThemeToggle /><a href={`/menu/${restaurant.slug}`} target="_blank" rel="noreferrer">View restaurant <IconExternalLink className="h-3 w-3" /></a><button aria-label="Notifications">♧<i /></button><DashboardIdentity displayName={userName} restaurantName={restaurant.name} /></div></header>
       <div className="dashboard-content">
         <div className="welcome-row"><div><p className="dashboard-kicker">{features.label} workspace</p><h1>Welcome back, {userName}! <span>👋</span></h1><p>Here’s what’s happening with your restaurant today.</p></div><a className="primary-button" href="/dashboard/menu">+ Add new dish</a></div>
         <section className="metric-grid"><div className="metric-card green"><div className="metric-icon">▣</div><p>Total dishes</p><strong>{dishResult.count ?? 0}</strong><small>{activeOrders.length} customer orders</small><span className="metric-spark">⌁</span></div><div className="metric-card amber"><div className="metric-icon">₹</div><p>Total revenue</p><strong>{formatPrice(revenue)}</strong><small>Excludes cancelled orders</small><span className="metric-spark">⌁</span></div><div className="metric-card lilac"><div className="metric-icon">◎</div><p>Menu visitors</p><strong>{visitResult.count ?? 0}</strong><small>Unique daily visits</small><span className="metric-spark">⌁</span></div><div className="metric-card coral"><div className="metric-icon">☷</div><p>Pending orders</p><strong>{(orderResult.data ?? []).filter(order => order.status === 'pending').length}</strong><small><a href="/dashboard/orders">Manage orders →</a></small><span className="metric-spark">⌁</span></div></section>

@@ -37,6 +37,25 @@ html { scroll-padding-top: 24px; }
   .marketing-footer-grid > :first-child { grid-column: 1 / -1; }
   .marketing-footer-grid > :last-child { grid-column: 1 / -1; max-width: 420px; }
 }
+
+/* WIIT brand lockups */
+.wiit-logo { display: block; object-fit: contain; object-position: center; }
+html.dark .page-shell .wiit-logo { filter: brightness(1.65); }
+.wiit-logo-navbar { width: 190px !important; height: 64px !important; max-width: none !important; margin-block: -14px; }
+.wiit-logo-footer { width: 220px; height: 76px; margin-block: -8px 0; }
+.wiit-logo-auth { width: 224px; height: 76px; margin-block: -12px; }
+.wiit-logo-setup { width: 196px; height: 66px; margin-block: -10px; }
+.wiit-logo-dashboard { width: 202px; height: 72px; border-radius: 9px; background: #faf7f1; padding: 7px 9px; }
+.wiit-logo-mobile { width: 136px; height: 46px; }
+.dashboard-brand { justify-content: center; padding-bottom: 22px; }
+.mobile-brand { align-items: center; }
+.ems-logo { min-height: 66px; background: url('/assets/brand/wiit-logo-transparent.png') left center / 180px auto no-repeat; }
+.ems-logo > * { display: none !important; }
+
+@media (max-width: 700px) {
+  .wiit-logo-navbar { width: 146px !important; height: 50px !important; margin-block: -7px; }
+  .wiit-logo-footer { width: 190px; height: 66px; }
+}
 @media (max-width: 1023px) {
   .marketing-desktop-nav { display: none; }
   .marketing-menu-toggle { display: inline-flex; }
