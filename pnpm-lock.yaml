@@ -32,6 +32,9 @@ importers:
       next:
         specifier: 15.5.25
         version: 15.5.25(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      page-mascot:
+        specifier: ^0.1.0
+        version: 0.1.0(react@18.3.1)
       qrcode:
         specifier: ^1.5.3
         version: 1.5.4
@@ -1833,6 +1836,12 @@ packages:
   p-try@2.2.0:
     resolution: {integrity: sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==}
     engines: {node: '>=6'}
+
+  page-mascot@0.1.0:
+    resolution: {integrity: sha512-sw/BIqRKJ7nUfaxAGtmwQqm534I+lb2ZiXLDWZNexR1VF1RkmRl6BLVtj7hH+PrsiCPKtxHhA3IpVkXEm72FeA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      react: '>=18'
 
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
@@ -4302,6 +4311,8 @@ snapshots:
       p-limit: 3.1.0
 
   p-try@2.2.0: {}
+
+  page-mascot@0.1.0(react@18.3.1): {}
 
   parent-module@1.0.1:
     dependencies:
