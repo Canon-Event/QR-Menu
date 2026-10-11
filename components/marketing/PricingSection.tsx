@@ -17,7 +17,7 @@ const plans = [
     ongoingPrice: undefined,
     noteTitle: 'Need a custom look?',
     note: 'Ask us about custom menu design as a paid add-on.',
-    reaction: '100% 100%',
+    reaction: '50% 0%',
     accessory: 'free',
     message: <>It’s <strong>FREE</strong>, chef! Let’s get cooking.</>,
     features: [
