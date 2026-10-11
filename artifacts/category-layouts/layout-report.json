@@ -1,0 +1,84 @@
+[
+  {
+    "template": "A",
+    "width": 390,
+    "scrollWidth": 390,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 22,
+    "typography": null
+  },
+  {
+    "template": "A",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 22,
+    "typography": null
+  },
+  {
+    "template": "B",
+    "width": 390,
+    "scrollWidth": 390,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 22,
+    "typography": null
+  },
+  {
+    "template": "B",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 22,
+    "typography": null
+  },
+  {
+    "template": "C",
+    "width": 390,
+    "scrollWidth": 390,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 19,
+    "typography": null
+  },
+  {
+    "template": "C",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 19,
+    "typography": null
+  },
+  {
+    "template": "D",
+    "width": 390,
+    "scrollWidth": 390,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 19,
+    "typography": {
+      "size": "6.708px",
+      "font": "Georgia, cursive",
+      "variable": "Georgia",
+      "container": "inline-size"
+    }
+  },
+  {
+    "template": "D",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "missingImages": [],
+    "clipped": [],
+    "dishCount": 19,
+    "typography": {
+      "size": "13.072px",
+      "font": "Georgia, cursive",
+      "variable": "Georgia",
+      "container": "inline-size"
+    }
+  }
+]

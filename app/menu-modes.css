@@ -1,0 +1,18 @@
+.menu-mode-selector { min-width: 0; margin: 0; padding: 0; border: 0; }
+.menu-mode-selector legend { margin-bottom: 12px; color: #263d30; font-size: 13px; font-weight: 800; }
+.menu-mode-options { display: grid; gap: 12px; }
+.menu-mode-option { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid #dce4dd; border-radius: 8px; background: #fcfdfb; color: #263d30; cursor: pointer; }
+.menu-mode-option.selected { border-color: #39734a; background: #f0f7ef; }
+.menu-mode-option:focus-within { outline: 2px solid #39734a; outline-offset: 3px; }
+.menu-mode-option input[type='radio'] { flex: 0 0 auto; width: 18px; height: 18px; margin: 2px 0 0; padding: 0; accent-color: #39734a; box-shadow: none; }
+.menu-mode-option > span { display: flex; flex-direction: column; gap: 6px; }
+.menu-mode-option b { font-size: 13px; }
+.menu-mode-option small, .menu-mode-help { color: #617267; font-size: 12px; font-weight: 400; line-height: 1.6; }
+.menu-mode-help { margin: 16px 0 0; }
+.menu-mode-selector:disabled { opacity: .65; }
+.menu-mode-selector:disabled .menu-mode-option { cursor: wait; }
+.customer-menu-notice { margin: 0; padding: 18px 16px; background: #f4f7f1; color: #31553b; text-align: center; font: 500 13px/1.6 var(--font-manrope), sans-serif; }
+html.dark .menu-mode-selector legend, html.dark .menu-mode-option { color: #edf5ef; }
+html.dark .menu-mode-option { border-color: #3b4b40; background: #17211b; }
+html.dark .menu-mode-option.selected { border-color: #84c391; background: #203c2a; }
+html.dark .menu-mode-option small, html.dark .menu-mode-help { color: #a7b8ad; }

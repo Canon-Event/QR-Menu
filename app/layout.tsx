@@ -4,6 +4,8 @@ import './globals.css'
 import './employee-operations.css'
 import './templates.css'
 import './responsive.css'
+import './menu-modes.css'
+import './category-layouts.css'
 
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope' })
 const dmSerif = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-dm-serif' })

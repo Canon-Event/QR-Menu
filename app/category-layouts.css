@@ -1,0 +1,36 @@
+/* Keep illustrated sections anchored even when neighbouring categories are absent. */
+.bistro-pages > section { flex: none; width: 100%; }
+.bistro-inner-category.without-image { grid-template-columns: 1fr; }
+.bistro-inner-category.without-image .bistro-category-copy { padding: 0 3%; }
+.bistro-inner-list { grid-template-rows: 1.18fr 1fr 1fr 1fr; }
+.bistro-inner-category .bistro-dish h3 { font-size: min(var(--menu-dish-name-size), 1.65cqw) !important; }
+.bistro-inner-category .bistro-dish p { font-size: min(var(--menu-description-size), 1.15cqw) !important; }
+.bistro-inner-category .bistro-dish strong { font-size: min(var(--menu-price-size), 1.55cqw) !important; white-space: nowrap; }
+.bistro-botanical-category .bistro-dish h3 { font-size: min(var(--menu-dish-name-size), 1.9cqw) !important; }
+.bistro-botanical-category .bistro-dish p { font-size: min(var(--menu-description-size), 1.25cqw) !important; }
+.bistro-botanical-category .bistro-dish strong { font-size: min(var(--menu-price-size), 1.8cqw) !important; white-space: nowrap; }
+.heritage-illustrated .heritage-vintage-sections { top: 26%; bottom: 13%; grid-template-rows: repeat(4, minmax(0, 1fr)); }
+.heritage-illustrated .heritage-vintage-section h3 { font-size: min(var(--menu-category-size), 2.2cqw) !important; }
+.heritage-specials-layout .heritage-vintage-section.featured { top: 0; left: 0; width: 43%; height: 28%; }
+.heritage-specials-layout .heritage-vintage-section.lower-left { top: 33%; left: 0; width: 43%; height: 28%; }
+.heritage-specials-layout .heritage-vintage-section.lower-right { top: 66%; left: 0; right: auto; width: 43%; height: 28%; }
+.heritage-general { border: 8px double #735647; background: radial-gradient(ellipse at top, #fbf3df, #ead8b7); }
+.heritage-general .heritage-vintage-identity { top: 8%; }
+.heritage-general .heritage-vintage-title { top: 16%; }
+.heritage-general .heritage-vintage-sections { top: 25%; left: 12%; width: 76%; bottom: 10%; }
+.bloom-general { border: 8px double #718655; background: radial-gradient(ellipse at top, #fffdf3, #f0ead5); }
+.bloom-general .bloom-page-header > h2 { white-space: normal; font-size: min(var(--menu-name-size), 4.5cqw) !important; line-height: 1.1; }
+.category-artwork-controls fieldset { min-width: 0; margin: 18px 0 0; padding: 14px; border: 1px solid #d9e2dc; border-radius: 10px; }
+.category-artwork-controls legend { padding: 0 6px; font-size: 13px; font-weight: 800; }
+.category-artwork-controls select { width: 100%; min-width: 0; padding: 10px; border: 1px solid #d9e2dc; border-radius: 6px; color: #17382e; background: white; font: inherit; font-size: 12px; }
+.category-placement-notice { padding: 12px; border-radius: 8px; background: #fff4dd; color: #6a4d1b; font-size: 12px; line-height: 1.5; }
+.category-artwork-controls a { text-decoration: underline; }
+/* The illustrated Italian template uses a light page, unlike the old dark theme. */
+.public-menu.italian-menu-shell h1, .public-menu.italian-menu-shell section h2 { color: var(--menu-primary, #601b28) !important; }
+.public-menu.italian-menu-shell section p, .public-menu.italian-menu-shell section span { color: #5d4e47 !important; }
+@media (max-width: 650px) {
+  .bistro-inner-category .bistro-dish h3, .bistro-botanical-category .bistro-dish h3 { font-size: max(13px, min(var(--menu-dish-name-size), 3.5cqw)) !important; white-space: normal; }
+  .bistro-inner-category .bistro-dish p, .bistro-botanical-category .bistro-dish p { font-size: max(11px, min(var(--menu-description-size), 3cqw)) !important; }
+  .bistro-inner-category .bistro-dish strong, .bistro-botanical-category .bistro-dish strong { font-size: max(12px, min(var(--menu-price-size), 3.2cqw)) !important; }
+  .bistro-inner-category.without-image { min-height: 160px; }
+}

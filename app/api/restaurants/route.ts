@@ -16,6 +16,9 @@ export async function POST(request: Request) {
   const slug = typeof body?.slug === 'string' ? body.slug.trim().toLowerCase() : ''
   const logoUrl = typeof body?.logoUrl === 'string' ? body.logoUrl.trim() : ''
   const template = ['A', 'B', 'C', 'D'].includes(body?.template) ? body.template : 'A'
+  const menuMode = body?.menuMode ?? 'view_only'
+
+  if (menuMode !== 'ordering' && menuMode !== 'view_only') return NextResponse.json({ error: 'Choose a valid menu mode.' }, { status: 400 })
 
   if (ownerName.length < 2 || ownerName.length > 100) return NextResponse.json({ error: 'Your name must be between 2 and 100 characters.' }, { status: 400 })
   if (name.length < 2 || name.length > 100) return NextResponse.json({ error: 'Restaurant name must be between 2 and 100 characters.' }, { status: 400 })
@@ -26,7 +29,7 @@ export async function POST(request: Request) {
   if (lookupError) return NextResponse.json({ error: getDatabaseErrorMessage(lookupError) }, { status: 503 })
   if (existing) return NextResponse.json({ error: 'That menu URL is already taken.' }, { status: 409 })
 
-  const { data: restaurant, error } = await supabase.from('restaurants').insert({ owner_id: user.id, name, slug, logo_url: logoUrl || null, template, tier: 1, is_active: true }).select('id, slug').single()
+  const { data: restaurant, error } = await supabase.from('restaurants').insert({ owner_id: user.id, name, slug, logo_url: logoUrl || null, template, menu_mode: menuMode, tier: 1, is_active: true }).select('id, slug').single()
   if (error) {
     if (error.code === '23505') return NextResponse.json({ error: 'That menu URL is already taken.' }, { status: 409 })
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 503 })
@@ -38,6 +41,7 @@ export async function POST(request: Request) {
 }
 
 function getDatabaseErrorMessage(error: { code?: string }) {
+  if (error.code === '42703' || error.code === 'PGRST204') return 'Menu modes are not configured yet. Run supabase/phase-menu-modes.sql in your Supabase SQL Editor, then try again.'
   if (error.code === '42P01' || error.code === 'PGRST205') return 'The database is not initialized yet. Run supabase/schema.sql in your Supabase SQL Editor, then try again.'
   if (error.code === '42501' || error.code === 'PGRST301') return 'Your account does not have permission to create a restaurant. Check the restaurants RLS policy.'
   return 'We could not create your restaurant right now. Please try again.'

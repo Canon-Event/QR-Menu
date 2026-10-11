@@ -2,30 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import type { Category, Dish, MenuData } from '@/types'
+import type { Dish, MenuData } from '@/types'
 import { formatCurrency } from '@/lib/currency'
+import { buildMenuPages, pageTitle } from '@/lib/menu-layout'
 
 const editableText = (value: string | undefined, fallback: string) => value === undefined ? fallback : value
-const DISHES_PER_SECTION = 4
-const DRINKS_PER_SECTION = 9
-const DRINK_CATEGORY_PATTERN = /\b(mocktails?|iced\s*teas?|beverages?|drinks?|coolers?|juices?|smoothies?|shakes?|coffees?|teas?)\b/i
-
-type BloomSection = {
-  key: string
-  name: string
-  dishes: Dish[]
-  continued: boolean
-}
-
-function splitSection(category: Category, dishes: Dish[], pageSize = DISHES_PER_SECTION): BloomSection[] {
-  return Array.from({ length: Math.ceil(dishes.length / pageSize) }, (_, index) => ({
-    key: `${category.id}-${index}`,
-    name: category.name,
-    dishes: dishes.slice(index * pageSize, (index + 1) * pageSize),
-    continued: index > 0,
-  }))
-}
-
 function BloomDrink({ dish, currency }: { dish: Dish; currency: string }) {
   return <article className="bloom-drink">
     <div>
@@ -57,7 +38,7 @@ function BloomDish({ dish, currency }: { dish: Dish; currency: string }) {
 }
 
 export default function BloomBrunchMenu({ data }: { data: MenuData }) {
-  const { restaurant, categories, dishes } = data
+  const { restaurant } = data
   const design = restaurant.template_settings?.D || {}
   const [menuQr, setMenuQr] = useState('')
   useEffect(() => {
@@ -67,22 +48,9 @@ export default function BloomBrunchMenu({ data }: { data: MenuData }) {
       color: { dark: '#315d17', light: '#fbf8ef' },
     }).then(setMenuQr).catch(() => setMenuQr(''))
   }, [restaurant.slug])
-  const grouped = categories
-    .map(category => ({ category, dishes: dishes.filter(dish => dish.category_id === category.id) }))
-    .filter(group => group.dishes.length)
-  const uncategorized = dishes.filter(dish => !dish.category_id)
-  if (uncategorized.length) {
-    grouped.push({
-      category: { id: 'other', restaurant_id: restaurant.id, name: 'Other', sort_order: Number.MAX_SAFE_INTEGER },
-      dishes: uncategorized,
-    })
-  }
-  const drinkGroups = grouped.filter(group => DRINK_CATEGORY_PATTERN.test(group.category.name))
-  const foodGroups = grouped.filter(group => !DRINK_CATEGORY_PATTERN.test(group.category.name))
-  const foodSections = foodGroups.flatMap(group => splitSection(group.category, group.dishes))
-  const drinkSections = drinkGroups.flatMap(group => splitSection(group.category, group.dishes, DRINKS_PER_SECTION))
-  const pages = Array.from({ length: Math.ceil(foodSections.length / 3) }, (_, index) => foodSections.slice(index * 3, index * 3 + 3))
-  const drinkPages = Array.from({ length: Math.ceil(drinkSections.length / 2) }, (_, index) => drinkSections.slice(index * 2, index * 2 + 2))
+  const allPages = buildMenuPages(data, 'D')
+  const pages = allPages.filter(page => page.layout !== 'bloom-drinks')
+  const drinkPages = allPages.filter(page => page.layout === 'bloom-drinks')
   const coverArtwork = design.imageUrl || '/templates/bloom-brunch/bloom-brunch-cover-v1.png'
   const coverTagline = editableText(design.coverTagline, 'All Day Breakfast • Café • Mocktails')
   const categoryTagline = editableText(design.categoryTagline, 'Freshly made • served all day')
@@ -103,15 +71,15 @@ export default function BloomBrunchMenu({ data }: { data: MenuData }) {
     </section>
 
     <div id="bloom-menu-content" className="bloom-pages">
-      {pages.map((page, pageIndex) => <section className="bloom-menu-page" key={`bloom-page-${pageIndex}`}>
-        <img className="bloom-page-art" data-template-image-slot="0" data-default-src="/templates/bloom-brunch/bloom-brunch-inner-v1.png" src={design.menuImageOne || '/templates/bloom-brunch/bloom-brunch-inner-v1.png'} alt="" aria-hidden="true" />
+      {pages.map((page, pageIndex) => <section className={`bloom-menu-page ${page.layout}`} key={`bloom-page-${pageIndex}`}>
+        {page.layout === 'bloom-breakfast' && <img className="bloom-page-art" data-template-image-slot="0" data-default-src="/templates/bloom-brunch/bloom-brunch-inner-v1.png" src={design.menuImageOne || '/templates/bloom-brunch/bloom-brunch-inner-v1.png'} alt="" aria-hidden="true" />}
         <header className="bloom-page-header">
           <span>{restaurant.name}</span>
-          <h2 data-template-field="sectionKicker">{editableText(design.sectionKicker, 'Breakfast Delights')}</h2>
+          <h2 data-template-field={page.layout === 'bloom-breakfast' ? 'sectionKicker' : undefined}>{page.layout === 'bloom-breakfast' ? editableText(design.sectionKicker, 'Breakfast Delights') : pageTitle(page.sections)}</h2>
           <div aria-hidden="true"><i />♡<i /></div>
         </header>
         <div className="bloom-section-grid">
-          {page.map(section => <article className="bloom-section" key={section.key}>
+          {page.sections.map(section => <article className="bloom-section" key={section.key}>
             <header>
               <h2 className={`menu-category-name${section.name.length > 24 ? ' is-long' : ''}`}>{section.name}{section.continued ? ' — continued' : ''}</h2>
               <p data-template-field="categoryTagline">{categoryTagline}</p>
@@ -124,7 +92,7 @@ export default function BloomBrunchMenu({ data }: { data: MenuData }) {
       {drinkPages.map((page, pageIndex) => <section className="bloom-drinks-page" key={`bloom-drinks-page-${pageIndex}`}>
         <img className="bloom-drinks-art" data-template-image-slot="1" data-default-src="/templates/bloom-brunch/bloom-brunch-drinks-v1.png" src={design.menuImageTwo || '/templates/bloom-brunch/bloom-brunch-drinks-v1.png'} alt="" aria-hidden="true" />
         <div className="bloom-drinks-grid">
-          {page.map(section => <article className="bloom-drinks-section" key={section.key}>
+          {page.sections.map(section => <article className="bloom-drinks-section" key={section.key}>
             <header><h2 className={`menu-category-name${section.name.length > 24 ? ' is-long' : ''}`}>{section.name}{section.continued ? ' — continued' : ''}</h2><div aria-hidden="true"><i />❧<i /></div></header>
             <div>{section.dishes.map(dish => <BloomDrink key={dish.id} dish={dish} currency={restaurant.currency} />)}</div>
           </article>)}

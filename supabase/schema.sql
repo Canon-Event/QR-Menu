@@ -13,6 +13,7 @@ create table restaurants (
   address     text,
   phone       text,
   currency    text not null default 'INR' check (currency in ('INR','USD','EUR','GBP','AED')),
+  menu_mode   text not null default 'view_only' check (menu_mode in ('ordering', 'view_only')),
   qr_foreground text not null default '#000000' check (qr_foreground ~ '^#[0-9a-fA-F]{6}$'),
   qr_background text not null default '#ffffff' check (qr_background ~ '^#[0-9a-fA-F]{6}$'),
   qr_margin int not null default 2 check (qr_margin between 0 and 8),

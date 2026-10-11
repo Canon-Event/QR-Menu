@@ -2,15 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import type { Category, Dish, MenuData } from '@/types'
+import type { Dish, MenuData } from '@/types'
 import { formatCurrency } from '@/lib/currency'
+import { buildMenuPages, type MenuSection } from '@/lib/menu-layout'
 
-const fallbackImages = [
-  '/templates/green-bistro/burrata.jpg',
-  '/templates/green-bistro/pasta.jpg',
-  '/templates/green-bistro/botanical-drink-v1.png',
-  '/templates/green-bistro/steak.jpg',
-]
 const editableText = (value: string | undefined, fallback: string) => value === undefined ? fallback : value
 
 function DishLine({ dish, currency }: { dish: Dish; currency: string }) {
@@ -20,25 +15,24 @@ function DishLine({ dish, currency }: { dish: Dish; currency: string }) {
   </article>
 }
 
-type BistroGroup = { category: Category; dishes: Dish[]; image: string }
+type BistroGroup = MenuSection
 
-function BotanicalCategory({ group, currency, placement, imageSlot, tagline }: {
+function BotanicalCategory({ group, currency, placement, tagline }: {
   group: BistroGroup
   currency: string
   placement: 'left' | 'top-right' | 'bottom-right'
-  imageSlot: number
   tagline: string
 }) {
   return <article className={`bistro-botanical-category ${placement}`}>
     <header>
-      <h2 className="menu-category-name">{group.category.name}</h2>
+      <h2 className="menu-category-name">{group.category.name}{group.continued ? ' — continued' : ''}</h2>
       <span data-template-field="categoryTagline">{tagline}</span>
     </header>
     <div className="bistro-botanical-dishes">
       {group.dishes.map(dish => <DishLine key={dish.id} dish={dish} currency={currency} />)}
     </div>
-    {placement !== 'top-right' && <figure>
-      <img data-template-image-slot={imageSlot} data-default-src={group.image} src={group.image} alt={`${group.category.name} selection`} />
+    {placement !== 'top-right' && group.image && <figure>
+      <img src={group.image} alt={`${group.category.name} selection`} />
     </figure>}
   </article>
 }
@@ -52,20 +46,11 @@ function BackPageIcon({ type }: { type: 'clock' | 'pin' | 'phone' }) {
 }
 
 export default function GreenBistroMenu({ data }: { data: MenuData }) {
-  const { restaurant, categories, dishes } = data
+  const { restaurant } = data
   const design = restaurant.template_settings?.B || {}
   const [menuQr, setMenuQr] = useState('')
   useEffect(() => { QRCode.toDataURL(`${window.location.origin}/menu/${restaurant.slug}`, { width: 260, margin: 1, color: { dark: '#203622', light: '#f7f1e4' } }).then(setMenuQr).catch(() => setMenuQr('')) }, [restaurant.slug])
-  const configuredImages = [design.menuImageOne, design.menuImageTwo, design.menuImageThree, design.menuImageFour]
-  const groups = categories.map((category: Category, index: number) => ({
-    category,
-    dishes: dishes.filter((dish: Dish) => dish.category_id === category.id),
-    image: configuredImages[index % 4] || dishes.find((dish: Dish) => dish.category_id === category.id && dish.image_url)?.image_url || fallbackImages[index % fallbackImages.length],
-  })).filter(group => group.dishes.length)
-  const uncategorized = dishes.filter((dish: Dish) => !dish.category_id)
-  if (uncategorized.length) groups.push({ category: { id: 'other', name: 'Other' } as Category, dishes: uncategorized, image: uncategorized.find((dish: Dish) => dish.image_url)?.image_url || fallbackImages[groups.length % fallbackImages.length] })
-  const botanicalPages = Array.from({ length: Math.ceil(groups.length / 3) }, (_, page) => groups.slice(page * 3, page * 3 + 3))
-  const fourSectionPages = Array.from({ length: Math.ceil(groups.length / 4) }, (_, page) => groups.slice(page * 4, page * 4 + 4))
+  const pages = buildMenuPages(data, 'B')
   const menuPageLayout = design.menuPageLayout === 'four' || design.menuPageLayout === 'botanical' || design.menuPageLayout === 'both'
     ? design.menuPageLayout
     : 'both'
@@ -89,34 +74,29 @@ export default function GreenBistroMenu({ data }: { data: MenuData }) {
     </section>
 
     <div id="bistro-menu-content" className="bistro-pages">
-      {botanicalPages.map((botanicalGroups, botanicalPageIndex) => <section className="bistro-botanical-page bistro-frame" key={`botanical-page-${botanicalPageIndex}`}>
+      {pages.map((page, pageIndex) => page.layout === 'bistro-botanical' ? <section className="bistro-botanical-page bistro-frame" key={`menu-page-${pageIndex}`}>
         <img className="bistro-botanical-background" src="/templates/green-bistro/botanical-background-v2.png" alt="" aria-hidden="true" />
         <div className="bistro-corner-copy"><span data-template-field="coverEyebrow">{editableText(design.coverEyebrow, 'GOOD FOOD · BRIGHTER DAYS')}</span><span data-template-field="coverSideNote">{editableText(design.coverSideNote, 'FRESH INGREDIENTS · GREAT COMPANY')}</span></div>
         <header className="bistro-inner-brand"><small>THE</small><b className={restaurantNameClass}>{restaurant.name}</b><p className="menu-subtitle">{restaurant.description || 'Modern western kitchen'}</p></header>
         <aside className="bistro-botanical-note" data-template-field="coverTagline">{editableText(design.coverTagline, 'Eat well · Be together')}</aside>
         <div className="bistro-botanical-grid">
-          {botanicalGroups[0] && <BotanicalCategory group={botanicalGroups[0]} currency={restaurant.currency} placement="left" imageSlot={(botanicalPageIndex * 3) % 4} tagline={categoryTagline} />}
-          {botanicalGroups[1] && <BotanicalCategory group={botanicalGroups[1]} currency={restaurant.currency} placement="top-right" imageSlot={(botanicalPageIndex * 3 + 1) % 4} tagline={categoryTagline} />}
-          {botanicalGroups[2] && <BotanicalCategory group={botanicalGroups[2]} currency={restaurant.currency} placement="bottom-right" imageSlot={(botanicalPageIndex * 3 + 2) % 4} tagline={categoryTagline} />}
+          {page.sections.map(group => <BotanicalCategory key={group.key} group={group} currency={restaurant.currency} placement={(['left', 'top-right', 'bottom-right'] as const)[group.slot]} tagline={categoryTagline} />)}
         </div>
-        <footer><span data-template-field="sectionKicker">{editableText(design.sectionKicker, 'Simple ingredients · extraordinary moments')}</span><b>{String(botanicalPageIndex + 2).padStart(2, '0')}</b><em>{restaurant.name}</em></footer>
-      </section>)}
-      {fourSectionPages.map((pageGroups, pageIndex) => <section className="bistro-menu-page bistro-frame" key={`four-section-page-${pageIndex}`}>
+        <footer><span data-template-field="sectionKicker">{editableText(design.sectionKicker, 'Simple ingredients · extraordinary moments')}</span><b>{String(pageIndex + 2).padStart(2, '0')}</b><em>{restaurant.name}</em></footer>
+      </section> : <section className="bistro-menu-page bistro-frame" key={`menu-page-${pageIndex}`}>
         <img className="bistro-inner-background" src="/templates/green-bistro/inner-background-v2.png" alt="" aria-hidden="true" />
         <div className="bistro-corner-copy"><span data-template-field="coverEyebrow">{editableText(design.coverEyebrow, 'GOOD FOOD · BRIGHTER DAYS')}</span><span data-template-field="coverSideNote">{editableText(design.coverSideNote, 'FRESH INGREDIENTS · GREAT COMPANY')}</span></div>
         <header className="bistro-inner-brand"><small>THE</small><b className={restaurantNameClass}>{restaurant.name}</b><p className="menu-subtitle">{restaurant.description || 'Modern western kitchen'}</p></header>
         <aside className="bistro-inner-note left" data-template-field="coverFooter">{editableText(design.coverFooter, 'A warmer table for a brighter tomorrow')}</aside><aside className="bistro-inner-note right" data-template-field="sectionKicker">{editableText(design.sectionKicker, 'Good food · greener times')}</aside>
-        <div className="bistro-inner-list">{pageGroups.map((group, groupIndex) => {
-          const index = pageIndex * 4 + groupIndex
-          const defaultImage = dishes.find((dish: Dish) => dish.category_id === group.category.id && dish.image_url)?.image_url || fallbackImages[index % fallbackImages.length]
-          return <article className="bistro-inner-category" key={group.category.id}>
-            <figure><img data-template-image-slot={index % 4} data-default-src={defaultImage} src={group.image} alt={`${group.category.name} selection`} /></figure>
-            <div className="bistro-category-copy"><header><h2 className="menu-category-name">{group.category.name}</h2><span data-template-field="categoryTagline">{editableText(design.categoryTagline, 'Fresh flavours, brighter days')}</span></header>{group.dishes.map(dish => <DishLine key={dish.id} dish={dish} currency={restaurant.currency} />)}</div>
+        <div className="bistro-inner-list">{page.sections.map(group => {
+          return <article className={`bistro-inner-category${group.image ? '' : ' without-image'}`} style={{ gridRow: group.slot + 1 }} key={group.key}>
+            {group.image && <figure><img src={group.image} alt={`${group.category.name} selection`} /></figure>}
+            <div className="bistro-category-copy"><header><h2 className="menu-category-name">{group.category.name}{group.continued ? ' — continued' : ''}</h2><span data-template-field="categoryTagline">{editableText(design.categoryTagline, 'Fresh flavours, brighter days')}</span></header>{group.dishes.map(dish => <DishLine key={dish.id} dish={dish} currency={restaurant.currency} />)}</div>
           </article>
         })}</div>
-        <footer><span data-template-field="coverTagline">{editableText(design.coverTagline, 'Eat well · Be together')}</span><b>{String(pageIndex + 2 + (menuPageLayout === 'both' ? botanicalPages.length : 0)).padStart(2, '0')}</b><em>{restaurant.name}</em></footer>
+        <footer><span data-template-field="coverTagline">{editableText(design.coverTagline, 'Eat well · Be together')}</span><b>{String(pageIndex + 2).padStart(2, '0')}</b><em>{restaurant.name}</em></footer>
       </section>)}
-      {!groups.length && <section className="bistro-menu-page bistro-frame bistro-empty"><h2 className="menu-category-name">Menu coming soon</h2><p>Add categories and dishes from your dashboard.</p></section>}
+      {!pages.length && <section className="bistro-menu-page bistro-frame bistro-empty"><h2 className="menu-category-name">Menu coming soon</h2><p>Add categories and dishes from your dashboard.</p></section>}
     </div>
 
     <section className="bistro-back bistro-frame">

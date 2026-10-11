@@ -1,71 +1,31 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import type { MenuData } from '@/types'
 import { googleFontStylesheetUrl, menuDesignVariables } from '@/lib/menu-fonts'
+import MenuTier1 from '@/app/menu/[slug]/components/MenuTier1'
+import GreenBistroMenu from '@/components/menu/GreenBistroMenu'
+import ItalianMenu from '@/components/menu/ItalianMenu'
+import BloomBrunchMenu from '@/components/menu/BloomBrunchMenu'
 
-type DraftDesign = Parameters<typeof menuDesignVariables>[0] & {
-  imageUrl?: string
-  menuImageOne?: string
-  menuImageTwo?: string
-  menuImageThree?: string
-  menuImageFour?: string
-  backImageUrl?: string
-  [key: string]: unknown
-}
-
-export default function TemplateEditorPreviewBridge({ template }: { template: string }) {
+// Use the public renderers so category changes rebuild the actual page layout.
+export default function TemplateEditorPreviewBridge({ data }: { data: MenuData }) {
+  const template = data.restaurant.template
+  const [design, setDesign] = useState(data.restaurant.template_settings?.[template] || {})
   useEffect(() => {
     function updatePreview(event: MessageEvent) {
       if (event.origin !== window.location.origin || event.source !== window.parent) return
-      if (event.data?.type !== 'qrmenu:template-draft') return
-      const design = (event.data.design || {}) as DraftDesign
-      const root = document.querySelector<HTMLElement>('.dashboard-menu-preview')
-      if (!root) return
-      const bistroMenu = document.querySelector<HTMLElement>('.green-bistro-menu')
-      if (bistroMenu && (design.menuPageLayout === 'four' || design.menuPageLayout === 'botanical' || design.menuPageLayout === 'both')) {
-        bistroMenu.dataset.menuPageLayout = design.menuPageLayout
-      }
-      Object.entries(menuDesignVariables(design, template)).forEach(([property, value]) => {
-        if (value == null) root.style.removeProperty(property)
-        else root.style.setProperty(property, String(value))
-      })
-
-      document.getElementById('google-font-draft-preview')?.remove()
-      const fontUrl = googleFontStylesheetUrl(design.font)
-      if (fontUrl) {
-        const link = document.createElement('link')
-        link.id = 'google-font-draft-preview'
-        link.rel = 'stylesheet'
-        link.href = fontUrl
-        document.head.appendChild(link)
-      }
-
-      const artwork = document.querySelector<HTMLImageElement>('.heritage-menu-art')
-      if (artwork) artwork.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : '/templates/heritage/heritage-cover-v1.png'
-      const cover = document.querySelector<HTMLImageElement>('.bistro-cover-food')
-      if (cover) cover.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : cover.dataset.defaultSrc || '/templates/green-bistro/cover-background-v2.png'
-      const italianCover = document.querySelector<HTMLImageElement>('.italian-cover-background')
-      if (italianCover) italianCover.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : italianCover.dataset.defaultSrc || '/templates/italian/italian-cover-background-v1.png'
-      const bloomCover = document.querySelector<HTMLImageElement>('.bloom-cover-art')
-      if (bloomCover) bloomCover.src = design.imageUrl?.startsWith('https://') ? design.imageUrl : bloomCover.dataset.defaultSrc || '/templates/bloom-brunch/bloom-brunch-cover-v1.png'
-      const menuImages = [design.menuImageOne, design.menuImageTwo, design.menuImageThree, design.menuImageFour]
-      document.querySelectorAll<HTMLImageElement>('[data-template-image-slot]').forEach(image => {
-        const slot = Number(image.dataset.templateImageSlot || 0)
-        const next = menuImages[slot]
-        image.src = next?.startsWith('https://') ? next : image.dataset.defaultSrc || image.src
-      })
-      const back = document.querySelector<HTMLImageElement>('.bistro-back-image')
-      if (back) back.src = design.backImageUrl?.startsWith('https://') ? design.backImageUrl : back.dataset.defaultSrc || '/templates/green-bistro/back-background-v2.png'
-      const bloomBack = document.querySelector<HTMLImageElement>('.bloom-back-art')
-      if (bloomBack) bloomBack.src = design.backImageUrl?.startsWith('https://') ? design.backImageUrl : bloomBack.dataset.defaultSrc || '/templates/bloom-brunch/bloom-brunch-back-v1.png'
-      Object.entries(design).forEach(([field, value]) => {
-        if (typeof value !== 'string' || field.endsWith('Url') || field.startsWith('menuImage')) return
-        document.querySelectorAll<HTMLElement>(`[data-template-field="${field}"]`).forEach(element => { element.textContent = value })
-      })
+      if (event.data?.type !== 'qrmenu:template-draft' || !event.data.design || typeof event.data.design !== 'object' || Array.isArray(event.data.design)) return
+      setDesign(event.data.design)
     }
     window.addEventListener('message', updatePreview)
+    window.parent.postMessage({ type: 'qrmenu:preview-ready' }, window.location.origin)
     return () => window.removeEventListener('message', updatePreview)
-  }, [template])
-
-  return null
+  }, [])
+  const previewData: MenuData = { ...data, restaurant: { ...data.restaurant, template_settings: { ...data.restaurant.template_settings, [template]: design } } }
+  const fontUrl = googleFontStylesheetUrl(design.font)
+  return <div style={menuDesignVariables(design, template) as React.CSSProperties}>
+    {fontUrl && <link rel="stylesheet" href={fontUrl} />}
+    {template === 'B' ? <GreenBistroMenu data={previewData} /> : template === 'C' ? <ItalianMenu data={previewData} /> : template === 'D' ? <BloomBrunchMenu data={previewData} /> : <MenuTier1 data={previewData} />}
+  </div>
 }

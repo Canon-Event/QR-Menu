@@ -4,6 +4,8 @@ import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconArrowRight, IconExternalLink } from '@/components/marketing/Icons'
 import BrandLogo from '@/components/ui/BrandLogo'
+import MenuModeSelector from '@/components/dashboard/MenuModeSelector'
+import type { MenuMode } from '@/types'
 
 const templates = [
   { id: 'A', name: 'Classic', detail: 'Warm and familiar' },
@@ -19,6 +21,7 @@ export default function RestaurantSetupPage() {
   const [slug, setSlug] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [template, setTemplate] = useState('A')
+  const [menuMode, setMenuMode] = useState<MenuMode>('view_only')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -31,7 +34,7 @@ export default function RestaurantSetupPage() {
     event.preventDefault()
     setBusy(true)
     setError('')
-    const response = await fetch('/api/restaurants', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ownerName, name, slug, logoUrl, template }) })
+    const response = await fetch('/api/restaurants', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ownerName, name, slug, logoUrl, template, menuMode }) })
     const result = await response.json().catch(() => ({}))
     if (!response.ok) {
       setBusy(false)
@@ -54,6 +57,7 @@ export default function RestaurantSetupPage() {
             <div className="setup-field"><label htmlFor="restaurant-slug">Your menu address</label><div className="slug-input"><span>qrmenu.app/menu/</span><input id="restaurant-slug" value={slug} onChange={(event) => setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} minLength={3} maxLength={50} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="the-green-bistro" required /></div><small>Lowercase letters, numbers, and hyphens only.</small></div>
             <div className="setup-field"><label htmlFor="logo-url">Logo URL <span>(optional)</span></label><input id="logo-url" type="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://your-site.com/logo.png" /><small>Add a public HTTPS image URL for your brand mark.</small></div>
             <fieldset><legend>Choose a menu style</legend><div className="setup-templates">{templates.map((item) => <button type="button" key={item.id} aria-pressed={template === item.id} className={template === item.id ? 'setup-template selected' : 'setup-template'} onClick={() => setTemplate(item.id)}><span className={`setup-template-swatch swatch-${item.id.toLowerCase()}`} /><span><b>{item.name}</b><small>{item.detail}</small></span>{template === item.id && <em>✓</em>}</button>)}</div></fieldset>
+            <MenuModeSelector value={menuMode} onChange={setMenuMode} disabled={busy} />
             {error && <p className="auth-error" role="alert">{error}</p>}
             <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Creating restaurant...' : 'Continue to menu setup'} <IconArrowRight className="h-4 w-4" /></button>
           </form>

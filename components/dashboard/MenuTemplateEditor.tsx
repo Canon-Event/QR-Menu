@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Category } from '@/types'
+import type { CategoryPresentation } from '@/lib/menu-layout'
+import CategoryArtworkControls from './CategoryArtworkControls'
 
 type Design = {
   font: string
@@ -39,6 +42,7 @@ type Design = {
   menuImageFour?: string
   backImageUrl?: string
   menuPageLayout?: 'four' | 'botanical' | 'both'
+  categoryPresentation?: CategoryPresentation
 }
 type SizeKey = 'restaurantNameSize' | 'subtitleSize' | 'menuTitleSize' | 'categorySize' | 'dishNameSize' | 'descriptionSize' | 'priceSize' | 'addressSize'
 type ImageKey = 'imageUrl' | 'menuImageOne' | 'menuImageTwo' | 'menuImageThree' | 'menuImageFour' | 'backImageUrl'
@@ -103,10 +107,10 @@ const bloomTextControls: { key: keyof Design; label: string; multiline?: boolean
 ]
 const bistroImageControls: { key: ImageKey; label: string; fallback: string }[] = [
   { key: 'imageUrl', label: 'Cover image', fallback: 'Supplied steak cover' },
-  { key: 'menuImageOne', label: 'Menu image 1', fallback: 'First dish or supplied image' },
-  { key: 'menuImageTwo', label: 'Menu image 2', fallback: 'First dish or supplied image' },
-  { key: 'menuImageThree', label: 'Menu image 3', fallback: 'First dish or supplied image' },
-  { key: 'menuImageFour', label: 'Menu image 4', fallback: 'First dish or supplied image' },
+  { key: 'menuImageOne', label: 'Default starter photo', fallback: 'Starter artwork' },
+  { key: 'menuImageTwo', label: 'Default pasta photo', fallback: 'Pasta artwork' },
+  { key: 'menuImageThree', label: 'Default drinks photo', fallback: 'Drinks artwork' },
+  { key: 'menuImageFour', label: 'Default grill photo', fallback: 'Grill artwork' },
   { key: 'backImageUrl', label: 'Closing-page image', fallback: 'Supplied bistro image' },
 ]
 const bloomImageControls: { key: ImageKey; label: string; fallback: string }[] = [
@@ -126,7 +130,7 @@ const sizeControls: { key: SizeKey; label: string; min: number; max: number }[] 
   { key: 'addressSize', label: 'Address', min: 8, max: 24 },
 ]
 
-export default function MenuTemplateEditor({ template, savedDesign }: { template: string; savedDesign?: Partial<Design> }) {
+export default function MenuTemplateEditor({ template, savedDesign, categories, uncategorizedCount }: { template: string; savedDesign?: Partial<Design>; categories: Category[]; uncategorizedCount: number }) {
   const router = useRouter()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const initialDesign = useMemo(() => ({ ...defaults[template], ...(template === 'B' ? { menuPageLayout: 'both' as const } : {}), ...(savedDesign || {}) }), [savedDesign, template])
@@ -142,6 +146,13 @@ export default function MenuTemplateEditor({ template, savedDesign }: { template
   }
 
   useEffect(() => { sendDraft() }, [draft])
+  useEffect(() => {
+    const onReady = (event: MessageEvent) => {
+      if (event.origin === window.location.origin && event.source === iframeRef.current?.contentWindow && event.data?.type === 'qrmenu:preview-ready') sendDraft()
+    }
+    window.addEventListener('message', onReady)
+    return () => window.removeEventListener('message', onReady)
+  }, [draft])
   useEffect(() => {
     let active = true
     fetch('/api/google-fonts').then(async response => {
@@ -168,7 +179,7 @@ export default function MenuTemplateEditor({ template, savedDesign }: { template
     router.refresh()
   }
 
-  async function uploadImage(slot: ImageKey, file?: File) {
+  async function uploadImage(slot: ImageKey, file?: File, categoryId?: string) {
     if (!file) return
     setUploading(slot)
     setMessage('')
@@ -179,7 +190,7 @@ export default function MenuTemplateEditor({ template, savedDesign }: { template
     const result = await response.json().catch(() => ({}))
     setUploading('')
     if (!response.ok) return setMessage(result.error || 'Could not upload image.')
-    setDraft(current => ({ ...current, [slot]: result.imageUrl }))
+    setDraft(current => categoryId ? ({ ...current, categoryPresentation: { ...current.categoryPresentation, [categoryId]: { ...current.categoryPresentation?.[categoryId], imageUrl: result.imageUrl } } }) : ({ ...current, [slot]: result.imageUrl }))
     setMessage('Image uploaded. Save changes to publish it.')
   }
 
@@ -187,8 +198,9 @@ export default function MenuTemplateEditor({ template, savedDesign }: { template
     <header className="template-workspace-header"><div><a href="/dashboard/templates">← All templates</a><span>EDITING TEMPLATE</span><h1>{names[template]} menu</h1></div><div><p className={message ? 'show' : ''} role="status">{message}</p><button type="submit" form="template-design-form" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button></div></header>
     <div className="template-workspace-grid">
       <form id="template-design-form" className="template-workspace-controls" onSubmit={save}>
+        <CategoryArtworkControls categories={categories} uncategorizedCount={uncategorizedCount} template={template} value={draft.categoryPresentation || {}} onChange={categoryPresentation => setDraft(current => ({ ...current, categoryPresentation }))} onUpload={(id, file) => uploadImage('menuImageOne', file, id)} uploading={Boolean(uploading)} />
         {template === 'B' && <section className="workspace-layout-section"><header><b>Menu page structure</b><small>Choose either inner-page design, or include both designs in the published menu.</small></header><div className="workspace-layout-options">{[
-          { value: 'both', title: 'Use both', description: 'Show the split page, followed by the four-section page.' },
+          { value: 'both', title: 'Match categories to both designs', description: 'Starters, salads and drinks on the split page; pasta, pizza, grill and desserts on the four-section page. Each dish appears once.' },
           { value: 'botanical', title: 'Split page', description: 'Starters on the left, with two sections on the right.' },
           { value: 'four', title: 'Four sections', description: 'Stack four menu categories with large food images.' },
         ].map(option => <label className={draft.menuPageLayout === option.value ? 'active' : ''} key={option.value}><input type="radio" name="menuPageLayout" value={option.value} checked={draft.menuPageLayout === option.value} onChange={() => setDraft({ ...draft, menuPageLayout: option.value as Design['menuPageLayout'] })}/><b>{option.title}</b><span>{option.description}</span></label>)}</div></section>}

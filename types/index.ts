@@ -1,4 +1,7 @@
+import type { CategoryPresentation } from '@/lib/menu-layout'
+
 export type Tier = 1 | 2 | 3
+export type MenuMode = 'ordering' | 'view_only'
 
 export interface Restaurant {
   id: string
@@ -10,6 +13,7 @@ export interface Restaurant {
   address?: string
   phone?: string
   currency: string
+  menu_mode: MenuMode
   qr_foreground: string
   qr_background: string
   qr_margin: number
@@ -53,6 +57,7 @@ export interface Restaurant {
     menuImageFour?: string
     backImageUrl?: string
     menuPageLayout?: 'four' | 'botanical' | 'both'
+    categoryPresentation?: CategoryPresentation
   }>
   is_active: boolean
   created_at: string

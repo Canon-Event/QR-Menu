@@ -2,28 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import type { Category, Dish, MenuData } from '@/types'
+import type { Dish, MenuData } from '@/types'
 import { formatCurrency } from '@/lib/currency'
+import { buildMenuPages, type MenuSection } from '@/lib/menu-layout'
 
 const editableText = (value: string | undefined, fallback: string) => value === undefined ? fallback : value
-const DISHES_PER_SECTION = 8
-
-type ItalianSection = { key: string; name: string; dishes: Dish[]; continued: boolean }
+type ItalianSection = MenuSection
 
 function ItalianDish({ dish, currency }: { dish: Dish; currency: string }) {
   return <article className="italian-dish">
     <div><h3 className="menu-dish-name">{dish.name}</h3>{dish.description && <p className="menu-dish-description">{dish.description}</p>}</div>
     <strong className="menu-dish-price">{formatCurrency(dish.price, currency)}</strong>
   </article>
-}
-
-function splitItalianSection(category: Category, dishes: Dish[]): ItalianSection[] {
-  return Array.from({ length: Math.ceil(dishes.length / DISHES_PER_SECTION) }, (_, index) => ({
-    key: `${category.id}-${index}`,
-    name: category.name,
-    dishes: dishes.slice(index * DISHES_PER_SECTION, index * DISHES_PER_SECTION + DISHES_PER_SECTION),
-    continued: index > 0,
-  }))
 }
 
 function ItalianMenuSection({ section, currency, tagline }: { section: ItalianSection; currency: string; tagline: string }) {
@@ -45,7 +35,7 @@ function ItalianFeatureSection({ section, currency, placement }: { section: Ital
 }
 
 export default function ItalianMenu({ data }: { data: MenuData }) {
-  const { restaurant, categories, dishes } = data
+  const { restaurant } = data
   const design = restaurant.template_settings?.C || {}
   const [menuQr, setMenuQr] = useState('')
   useEffect(() => {
@@ -55,16 +45,7 @@ export default function ItalianMenu({ data }: { data: MenuData }) {
       color: { dark: '#601b28', light: '#f7efe1' },
     }).then(setMenuQr).catch(() => setMenuQr(''))
   }, [restaurant.slug])
-  const groups = categories.map((category: Category) => ({ category, dishes: dishes.filter((dish: Dish) => dish.category_id === category.id) })).filter(group => group.dishes.length)
-  const uncategorized = dishes.filter((dish: Dish) => !dish.category_id)
-  const completeGroups = uncategorized.length
-    ? [...groups, { category: { id: 'other', restaurant_id: restaurant.id, name: 'Other', sort_order: Number.MAX_SAFE_INTEGER } as Category, dishes: uncategorized }]
-    : groups
-  const sections = completeGroups.flatMap(group => splitItalianSection(group.category, group.dishes))
-  const pageTwoSections = sections.slice(0, 2)
-  const pageThreeSections = sections.slice(2, 6)
-  const remainingSections = sections.slice(6)
-  const remainingPages = Array.from({ length: Math.ceil(remainingSections.length / 2) }, (_, index) => remainingSections.slice(index * 2, index * 2 + 2))
+  const pages = buildMenuPages(data, 'C')
   const featurePlacements = ['top', 'middle', 'bottom-left', 'bottom-right'] as const
   const categoryTagline = editableText(design.categoryTagline, 'SMALL PLATES · BEAUTIFUL MOMENTS')
 
@@ -88,32 +69,22 @@ export default function ItalianMenu({ data }: { data: MenuData }) {
     </section>
 
     <div id="italian-menu-content" className="italian-menu-pages">
-      {pageTwoSections.length > 0 && <section className="italian-inner-page">
+      {pages.map((page, pageIndex) => page.layout === 'italian-inner' ? <section className="italian-inner-page" key={`italian-page-${pageIndex}`}>
         <img className="italian-inner-background" src="/templates/italian/italian-inner-background-v1.png" alt="" aria-hidden="true" />
         <p className="italian-inner-top-note">GOOD FOOD BRINGS PEOPLE TOGETHER</p>
         <div className="italian-inner-sections">
-          {pageTwoSections.map(section => <ItalianMenuSection key={section.key} section={section} currency={restaurant.currency} tagline={categoryTagline} />)}
+          {page.sections.map(section => <ItalianMenuSection key={section.key} section={section} currency={restaurant.currency} tagline={categoryTagline} />)}
         </div>
-        <footer><span>A MORE DELICIOUS TOMORROW</span><b>02</b></footer>
-      </section>}
-
-      {pageThreeSections.length > 0 && <section className="italian-feature-page" aria-label="Italian menu page 3">
+        <footer><span>A MORE DELICIOUS TOMORROW</span><b>{String(pageIndex + 2).padStart(2, '0')}</b></footer>
+      </section> : <section className="italian-feature-page" key={`italian-page-${pageIndex}`} aria-label={`Italian menu page ${pageIndex + 2}`}>
         <img className="italian-feature-background" src="/templates/italian/italian-feature-page-background-v1.png" alt="" aria-hidden="true" />
         <p className="italian-feature-top-note" data-template-field="coverTagline">{editableText(design.coverTagline, 'GOOD FOOD BRINGS PEOPLE TOGETHER')}</p>
         <div className="italian-feature-sections">
-          {pageThreeSections.map((section, index) => <ItalianFeatureSection key={section.key} section={section} currency={restaurant.currency} placement={featurePlacements[index]} />)}
+          {page.sections.map(section => <ItalianFeatureSection key={section.key} section={section} currency={restaurant.currency} placement={featurePlacements[section.slot]} />)}
         </div>
-        <footer><span data-template-field="coverFooter">{editableText(design.coverFooter, 'GOOD COMPANY · GREAT FOOD · BRIGHTER DAYS')}</span><b>03</b></footer>
-      </section>}
-
-      {remainingPages.map((pageSections, pageIndex) => <section className="italian-inner-page" key={`italian-inner-page-${pageIndex + 4}`}>
-        <img className="italian-inner-background" src="/templates/italian/italian-inner-background-v1.png" alt="" aria-hidden="true" />
-        <p className="italian-inner-top-note">GOOD FOOD BRINGS PEOPLE TOGETHER</p>
-        <div className="italian-inner-sections">
-          {pageSections.map(section => <ItalianMenuSection key={section.key} section={section} currency={restaurant.currency} tagline={categoryTagline} />)}
-        </div>
-        <footer><span>A MORE DELICIOUS TOMORROW</span><b>{String(pageIndex + 4).padStart(2, '0')}</b></footer>
+        <footer><span data-template-field="coverFooter">{editableText(design.coverFooter, 'GOOD COMPANY · GREAT FOOD · BRIGHTER DAYS')}</span><b>{String(pageIndex + 2).padStart(2, '0')}</b></footer>
       </section>)}
+      {!pages.length && <section className="italian-menu-page italian-menu-empty"><h2>Menu coming soon</h2></section>}
     </div>
 
     <section className="italian-back-page" aria-label={`${restaurant.name} menu closing page`}>

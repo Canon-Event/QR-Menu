@@ -1,14 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import type { MenuData } from '@/types'
-import MenuTier1 from '@/app/menu/[slug]/components/MenuTier1'
-import MenuTier2 from '@/app/menu/[slug]/components/MenuTier2'
-import MenuTier3 from '@/app/menu/[slug]/components/MenuTier3'
 import { googleFontStylesheetUrl, menuDesignVariables } from '@/lib/menu-fonts'
 import TemplateEditorPreviewBridge from '@/components/dashboard/TemplateEditorPreviewBridge'
-import GreenBistroMenu from '@/components/menu/GreenBistroMenu'
-import ItalianMenu from '@/components/menu/ItalianMenu'
-import BloomBrunchMenu from '@/components/menu/BloomBrunchMenu'
 
 export default async function DashboardMenuPreview({ searchParams }: { searchParams: Promise<{ template?: string; embedded?: string }> }) {
   const supabase = await createSupabaseServerClient()
@@ -25,7 +19,6 @@ export default async function DashboardMenuPreview({ searchParams }: { searchPar
   const data = { restaurant: { ...restaurant, template }, categories: categories || [], dishes: dishes || [], addons: (addons || []).map(item => item.addon_key) } as MenuData
   const design = data.restaurant.template_settings?.[template] || {}
   const fontStylesheet = googleFontStylesheetUrl(design.font)
-  const selectedMenu = template === 'A' ? <MenuTier1 data={data} /> : template === 'B' ? <GreenBistroMenu data={data} /> : template === 'C' ? <ItalianMenu data={data} /> : template === 'D' ? <BloomBrunchMenu data={data} /> : restaurant.tier === 3 ? <MenuTier3 data={data} /> : restaurant.tier === 2 ? <MenuTier2 data={data} /> : <MenuTier1 data={data} />
-  const menu = <><TemplateEditorPreviewBridge template={template} />{selectedMenu}</>
+  const menu = <TemplateEditorPreviewBridge data={data} />
   return <main className={`dashboard-menu-preview ${(await searchParams).embedded === '1' ? 'is-embedded' : ''}`} style={menuDesignVariables(design, template) as React.CSSProperties}>{fontStylesheet && <link rel="stylesheet" href={fontStylesheet} />}{(await searchParams).embedded !== '1' && <div className="dashboard-preview-bar"><a href="/dashboard/templates">← Templates</a><span>Previewing Template {template}</span><a href={`/menu/${restaurant.slug}`} target="_blank" rel="noopener noreferrer">Open active menu ↗</a></div>}{menu}</main>
 }

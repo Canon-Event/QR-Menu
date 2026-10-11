@@ -45,6 +45,17 @@ npm run dev
 Upload `.glb` files to Supabase storage bucket `dish-models`.  
 Set `model_url` on the dish to the public URL.
 
+## Customer menu modes
+
+Restaurant owners choose a mode during setup and can change it under **Dashboard > Settings > Menu mode**:
+
+- **View menu only:** guests browse dishes and prices on their phone, then order verbally with staff. Quantity controls and checkout are hidden, and the public ordering API rejects new orders.
+- **Menu with ordering:** guests select quantities and submit an order from their phone. Orders appear in the dashboard.
+
+The choice applies to all menu templates and subscription tiers. Menu visit tracking works in both modes. Previously placed orders remain accessible after switching modes.
+
+For an existing Supabase database, run `supabase/phase-menu-modes.sql` in the SQL Editor before deploying this change. Existing restaurants keep ordering enabled; new restaurants default to view only. New installations include the column in `supabase/schema.sql`; apply `supabase/phase-9-analytics-orders.sql` to enable order storage and analytics.
+
 ## Menu CSV import and export
 
 The menu dashboard can download a starter template, import up to 500 dishes from a CSV file, and export the current menu. Imports append to the existing menu and automatically create missing categories.

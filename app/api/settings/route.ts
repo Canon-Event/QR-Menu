@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getOwnedRestaurant, menuDatabaseError, rejectUnsafeRequest } from '@/lib/menu-api'
 import { cleanText } from '@/lib/menu-validation'
 import { MENU_FONT_KEYS } from '@/lib/menu-fonts'
+import { parseCategoryPresentation } from '@/lib/menu-layout'
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const colorPattern = /^#[0-9a-f]{6}$/i
@@ -36,6 +37,9 @@ export async function PATCH(request: Request) {
     if (logoUrl && (!/^https:\/\//i.test(logoUrl) || logoUrl.length > 2048)) return NextResponse.json({ error: 'Logo must be a valid HTTPS URL.' }, { status: 400 })
     if (!currency) return NextResponse.json({ error: 'Select a supported currency.' }, { status: 400 })
     Object.assign(updates, { name, slug, description: description || null, address: address || null, phone: phone || null, logo_url: logoUrl || null, currency })
+  } else if (section === 'menu_mode') {
+    if (body?.menuMode !== 'ordering' && body?.menuMode !== 'view_only') return NextResponse.json({ error: 'Choose a valid menu mode.' }, { status: 400 })
+    updates.menu_mode = body.menuMode
   } else if (section === 'template') {
     if (!['A', 'B', 'C', 'D'].includes(body?.template)) return NextResponse.json({ error: 'Select a valid template.' }, { status: 400 })
     updates.template = body.template
@@ -86,9 +90,14 @@ export async function PATCH(request: Request) {
     if (!template || !font || !primaryColor || Object.values(sizes).some(size => !Number.isInteger(size) || size < 8 || size > 96)) return NextResponse.json({ error: 'Choose valid template settings. Text sizes must be whole pixels between 8 and 96.' }, { status: 400 })
     if (imageUrl && (!/^https:\/\//i.test(imageUrl) || imageUrl.length > 2048)) return NextResponse.json({ error: 'Background image must be a valid HTTPS URL.' }, { status: 400 })
     if (Object.values(artwork).some(url => url && (!/^https:\/\//i.test(url) || url.length > 2048))) return NextResponse.json({ error: 'Every custom artwork URL must use HTTPS.' }, { status: 400 })
+    let categoryPresentation
+    if (body.categoryPresentation !== undefined) {
+      try { categoryPresentation = parseCategoryPresentation(body.categoryPresentation) }
+      catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid category settings.' }, { status: 400 }) }
+    }
     const { data: current, error: currentError } = await auth.supabase.from('restaurants').select('template_settings').eq('id', auth.restaurantId).maybeSingle()
     if (currentError) return menuDatabaseError(currentError)
-    updates.template_settings = { ...(current?.template_settings || {}), [template]: { font, primaryColor, imageUrl, menuPageLayout, ...sizes, ...copy, ...artwork } }
+    updates.template_settings = { ...(current?.template_settings || {}), [template]: { ...current?.template_settings?.[template], font, primaryColor, imageUrl, menuPageLayout, ...sizes, ...copy, ...artwork, ...(categoryPresentation !== undefined ? { categoryPresentation } : {}) } }
   } else if (section === 'qr') {
     const margin = Number(body?.margin)
     if (!colorPattern.test(body?.foreground) || !colorPattern.test(body?.background) || !Number.isInteger(margin) || margin < 0 || margin > 8) return NextResponse.json({ error: 'Choose valid QR colors and a margin from 0–8.' }, { status: 400 })
@@ -101,6 +110,7 @@ export async function PATCH(request: Request) {
 
   const { data, error } = await auth.supabase.from('restaurants').update(updates).eq('id', auth.restaurantId).select('*').maybeSingle()
   if (error) {
+    if (section === 'menu_mode' && (error.code === '42703' || error.code === 'PGRST204')) return NextResponse.json({ error: 'Menu modes are not configured yet. Run supabase/phase-menu-modes.sql in the Supabase SQL Editor.' }, { status: 503 })
     if (error.code === '23505') return NextResponse.json({ error: 'That menu address is already taken.' }, { status: 409 })
     return menuDatabaseError(error)
   }

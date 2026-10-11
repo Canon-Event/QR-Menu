@@ -3,10 +3,11 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import QRCode from 'qrcode'
-import type { Restaurant } from '@/types'
+import type { MenuMode, Restaurant } from '@/types'
+import MenuModeSelector from './MenuModeSelector'
 
 type Props = { restaurant: Restaurant; displayName: string; email: string; qrDataUrl: string; initialTab: string }
-const tabs = [['restaurant', 'Restaurant'], ['qr', 'QR code'], ['account', 'Account']] as const
+const tabs = [['restaurant', 'Restaurant'], ['menu_mode', 'Menu mode'], ['qr', 'QR code'], ['account', 'Account']] as const
 
 async function save(body: object) {
   const response = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -18,6 +19,7 @@ async function save(body: object) {
 export default function SettingsManager({ restaurant: initial, displayName: initialName, email, qrDataUrl, initialTab }: Props) {
   const router = useRouter()
   const [restaurant, setRestaurant] = useState(initial)
+  const [menuMode, setMenuMode] = useState<MenuMode>(initial.menu_mode ?? 'ordering')
   const [tab, setTab] = useState(tabs.some(item => item[0] === initialTab) ? initialTab : 'restaurant')
   const [profile, setProfile] = useState({ name: initial.name, slug: initial.slug, description: initial.description || '', address: initial.address || '', phone: initial.phone || '', logoUrl: initial.logo_url || '', currency: initial.currency || 'INR' })
   const [displayName, setDisplayName] = useState(initialName)
@@ -49,6 +51,11 @@ export default function SettingsManager({ restaurant: initial, displayName: init
     try { const result = await save({ section: 'template', template }); setRestaurant(result.restaurant); notify('success', 'Menu template updated.'); router.refresh() }
     catch (error) { notify('error', error instanceof Error ? error.message : 'Could not change template.') } finally { setBusy('') }
   }
+  async function saveMenuMode(event: FormEvent) {
+    event.preventDefault(); setBusy('menu_mode'); setMessage(null)
+    try { const result = await save({ section: 'menu_mode', menuMode }); setRestaurant(result.restaurant); setMenuMode(result.restaurant.menu_mode); notify('success', menuMode === 'ordering' ? 'Guests can now place orders from your menu.' : 'Guests can view your menu and order verbally with staff.'); router.refresh() }
+    catch (error) { notify('error', error instanceof Error ? error.message : 'Could not change menu mode.') } finally { setBusy('') }
+  }
   async function saveQr(event: FormEvent) {
     event.preventDefault(); setBusy('qr'); setMessage(null)
     try { const result = await save({ section: 'qr', ...qr }); setRestaurant(result.restaurant); notify('success', 'QR settings saved.'); router.refresh() }
@@ -71,5 +78,6 @@ export default function SettingsManager({ restaurant: initial, displayName: init
       {tab === 'templates' && <section className="settings-card"><div className="settings-card-heading"><h2>Menu template</h2><p>Choose how your public menu looks. Content and plan features remain unchanged.</p></div><div className="settings-template-grid">{[{ id: 'A', name: 'Heritage', detail: 'Warm Indian vintage presentation' }, { id: 'B', name: 'Green Bistro', detail: 'Botanical modern restaurant menu' }, { id: 'C', name: 'Italian', detail: 'Romantic Italian botanical presentation' }, { id: 'D', name: 'Bloom & Brunch', detail: 'Bright watercolor café presentation' }].map(item => <button disabled={busy === 'template'} className={restaurant.template === item.id ? 'selected' : ''} onClick={() => chooseTemplate(item.id)} key={item.id}><span className={`settings-template-preview preview-${item.id.toLowerCase()}`}><i /><i /><i /></span><b>{item.name}</b><small>{item.detail}</small>{restaurant.template === item.id && <em>Active</em>}</button>)}</div></section>}
       {tab === 'qr' && <form className="settings-card qr-settings-card" onSubmit={saveQr}><div className="settings-card-heading"><h2>QR code settings</h2><p>Changes appear instantly in the preview. Keep strong color contrast so phone cameras can scan reliably.</p></div><div className="qr-settings-layout"><div className="qr-settings-preview"><img src={liveQrDataUrl} alt="Live menu QR code preview" /><b>{restaurant.name}</b><small>Live preview · /menu/{restaurant.slug}</small></div><div className="qr-controls"><label>Foreground color<div><input type="color" value={qr.foreground} onChange={event => setQr({ ...qr, foreground: event.target.value })} /><input pattern="#[0-9a-fA-F]{6}" value={qr.foreground} onChange={event => setQr({ ...qr, foreground: event.target.value })} /></div></label><label>Background color<div><input type="color" value={qr.background} onChange={event => setQr({ ...qr, background: event.target.value })} /><input pattern="#[0-9a-fA-F]{6}" value={qr.background} onChange={event => setQr({ ...qr, background: event.target.value })} /></div></label><label>Quiet-zone margin: {qr.margin}<input type="range" min="0" max="8" step="1" value={qr.margin} onChange={event => setQr({ ...qr, margin: Number(event.target.value) })} /></label><div className="qr-control-actions"><a href={liveQrDataUrl} download={`${restaurant.slug}-qr.png`}>Download preview PNG</a><button disabled={busy === 'qr'}>{busy === 'qr' ? 'Saving…' : 'Save QR settings'}</button></div></div></div></form>}
       {tab === 'account' && <form className="settings-card" onSubmit={saveAccount}><div className="settings-card-heading"><h2>Account settings</h2><p>Update the profile attached to your secure login.</p></div><div className="settings-form-grid"><label>Display name<input required minLength={2} maxLength={100} value={displayName} onChange={event => setDisplayName(event.target.value)} /></label><label>Email address<input value={email} disabled /><span>Email changes require a verified authentication flow.</span></label></div><div className="settings-actions"><button disabled={busy === 'account'}>{busy === 'account' ? 'Saving…' : 'Save account profile'}</button></div></form>}
+      {tab === 'menu_mode' && <form className="settings-card" onSubmit={saveMenuMode}><div className="settings-card-heading"><h2>Menu mode</h2><p>Choose whether guests order from their phone or speak to your staff.</p></div><MenuModeSelector value={menuMode} onChange={setMenuMode} disabled={busy === 'menu_mode'} /><p className="menu-mode-help">This setting applies to every menu template. You can switch modes at any time. Orders already placed remain in your dashboard.</p><div className="settings-actions"><button disabled={busy === 'menu_mode' || menuMode === (restaurant.menu_mode ?? 'ordering')}>{busy === 'menu_mode' ? 'Saving...' : 'Save menu mode'}</button></div></form>}
     </div></main>
 }
