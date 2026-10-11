@@ -7,8 +7,7 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     const saved = window.localStorage.getItem('qrmenu-theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const nextDark = saved ? saved === 'dark' : prefersDark
+    const nextDark = saved === 'dark'
     document.documentElement.classList.toggle('dark', nextDark)
     setDark(nextDark)
   }, [])

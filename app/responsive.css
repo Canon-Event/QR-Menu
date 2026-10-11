@@ -376,7 +376,7 @@ html.dark :is(.employee-modal input, .ems-form-grid input, .leave-portal-form in
 .pricing-chef-sparkles svg:nth-child(1) { top: 12px; left: 3px; animation-delay: 0ms; }
 .pricing-chef-sparkles svg:nth-child(2) { top: 0; left: 30px; width: 21px; height: 21px; animation-delay: 110ms; }
 .pricing-chef-sparkles svg:nth-child(3) { top: 11px; right: 0; animation-delay: 220ms; }
-.pricing-chef-bubble-slot { position: relative; height: 56px; flex: 0 0 56px; pointer-events: none; }
+.pricing-chef-bubble-slot { position: relative; height: 48px; flex: 0 0 48px; pointer-events: none; }
 .pricing-chef-bubble { position: relative; width: fit-content; max-width: min(220px, 100%); padding: 8px 11px; border: 1px solid #123a2a; border-radius: 13px; background: #faf7f1; color: #123a2a; font-size: 12px; line-height: 1.35; box-shadow: 0 5px 14px rgb(16 26 21 / 10%); opacity: 0; transform: translateY(4px) scale(.95); transform-origin: 28px top; transition: opacity 240ms ease, transform 240ms cubic-bezier(.2,.8,.25,1); }
 .pricing-chef-bubble::before { position: absolute; top: -6px; left: 22px; width: 11px; height: 11px; border-top: 1px solid #123a2a; border-left: 1px solid #123a2a; background: #faf7f1; content: ''; transform: rotate(45deg); }
 .pricing-chef-bubble.is-visible { opacity: 1; transform: translateY(0) scale(1); }

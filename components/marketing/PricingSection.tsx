@@ -207,10 +207,7 @@ export default function PricingSection() {
             }}
             className={`relative flex min-h-[460px] flex-col rounded-2xl border bg-white p-6 text-left transition duration-300 ${popular ? 'border-brand-500 shadow-xl shadow-brand-500/10' : 'border-[var(--line)]'} ${active ? 'pricing-chef-card-active' : ''}`}
           >
-            <div className="mb-3 flex h-6 items-center">
-              {popular && <span className="rounded-full bg-forest px-3 py-1 text-[11px] font-semibold text-white">Best for growing restaurants</span>}
-            </div>
-            <div className="flex min-h-[112px] items-center gap-2">
+            <div className="flex min-h-[104px] items-center gap-2">
               <div data-pricing-chef className={`pricing-chef-frame pricing-chef-${accessory} ${active ? 'is-active' : ''}`}>
                 {liveTracking ? (
                   <Mascot directions={mascotDirections} reactions={mascotReactions} size={92} label={`${name} plan chef`} className="pricing-chef-live" />
@@ -237,7 +234,7 @@ export default function PricingSection() {
               </div>
             </div>
             <ChefSpeechBubble visible={active}>{message}</ChefSpeechBubble>
-            <div className="mt-2 min-h-[104px] border-b border-[var(--line)] pb-4">
+            <div className="mt-2 min-h-[92px] border-b border-[var(--line)] pb-3">
               <p className="flex min-h-9 flex-wrap items-baseline gap-x-2">
                 <span className={`font-sans text-3xl font-bold tracking-tight ${popular ? 'text-brand-500' : ''}`}>{price}</span>
               </p>
