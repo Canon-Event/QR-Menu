@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { IconArrowRight } from '@/components/marketing/Icons'
 import BrandLogo from '@/components/ui/BrandLogo'
+import { dashboardReturnPath } from '@/lib/auth-redirect'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -48,7 +49,7 @@ export default function LoginPage() {
       setError((await response.json().catch(() => null))?.error || 'Unable to verify this code.')
       return
     }
-    router.push('/dashboard')
+    router.push(dashboardReturnPath(new URLSearchParams(window.location.search).get('next'), window.location.origin))
     router.refresh()
   }
 
@@ -76,7 +77,7 @@ export default function LoginPage() {
         )}
         {message && <p className="auth-message" role="status">{message}</p>}
         {error && <p className="auth-error" role="alert">{error}</p>}
-        <p className="auth-footer">New to WIIT? <Link href="/register">Create your account</Link></p>
+        <p className="auth-footer">New to WIIT? <Link href="/register">Create your account</Link> · <Link href="/login?next=/staff">Staff access</Link></p>
       </section>
     </main>
   )

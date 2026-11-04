@@ -14,6 +14,9 @@ export interface Restaurant {
   phone?: string
   currency: string
   menu_mode: MenuMode
+  menu_presentation?: 'template' | 'basic'
+  basic_menu_style?: import('@/lib/ai-menu').BasicMenuStyle
+  table_verification_required?: boolean
   qr_foreground: string
   qr_background: string
   qr_margin: number

@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useMemo, useRef, useState } from 'react'
 import type { Category, Dish } from '@/types'
 
-type Props = { initialCategories: Category[]; initialDishes: Dish[]; restaurantName: string; menuUrl: string }
+type Props = { initialCategories: Category[]; initialDishes: Dish[]; restaurantName: string; menuUrl: string; demoMode?: boolean }
 type DishDraft = { id?: string; name: string; description: string; price: string; categoryId: string; isVeg: boolean; isAvailable: boolean }
 const emptyDish: DishDraft = { name: '', description: '', price: '', categoryId: '', isVeg: true, isAvailable: true }
 
@@ -14,7 +14,7 @@ async function mutate(url: string, method: string, body: object) {
   return result
 }
 
-export default function MenuManager({ initialCategories, initialDishes, restaurantName, menuUrl }: Props) {
+export default function MenuManager({ initialCategories, initialDishes, restaurantName, menuUrl, demoMode = false }: Props) {
   const [categories, setCategories] = useState(initialCategories)
   const [dishes, setDishes] = useState(initialDishes)
   const [categoryName, setCategoryName] = useState('')
@@ -39,6 +39,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function importCsv(event: ChangeEvent<HTMLInputElement>) {
+    if (demoMode) return
     const file = event.target.files?.[0]
     if (!file) return
     if (!confirm('Import this CSV? Its dishes will be appended to your current menu.')) { event.target.value = ''; return }
@@ -59,6 +60,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function saveCategory(event: FormEvent) {
+    if (demoMode) { event.preventDefault(); return }
     event.preventDefault(); setBusy('category'); setMessage(null)
     try {
       if (editingCategory) {
@@ -73,6 +75,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function removeCategory(category: Category) {
+    if (demoMode) return
     if (!confirm(`Delete “${category.name}”? Its dishes will become uncategorized.`)) return
     setBusy(category.id); setMessage(null)
     try {
@@ -82,6 +85,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function moveCategory(index: number, direction: -1 | 1) {
+    if (demoMode) return
     const other = index + direction
     if (other < 0 || other >= categories.length) return
     const reordered = [...categories]; [reordered[index], reordered[other]] = [reordered[other], reordered[index]]
@@ -91,6 +95,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function saveDish(event: FormEvent) {
+    if (demoMode) { event.preventDefault(); return }
     event.preventDefault(); setBusy('dish'); setMessage(null)
     try {
       const payload = { name: draft.name, description: draft.description, price: draft.price, categoryId: draft.categoryId || null, isVeg: draft.isVeg, isAvailable: draft.isAvailable }
@@ -111,12 +116,14 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function patchDish(dish: Dish, changes: object) {
+    if (demoMode) return
     setBusy(dish.id); setMessage(null)
     try { const result = await mutate('/api/menu/dishes', 'PATCH', { id: dish.id, ...changes }); setDishes(items => items.map(item => item.id === dish.id ? result.dish : item)) }
     catch (error) { notify('error', error instanceof Error ? error.message : 'Could not update dish.') } finally { setBusy('') }
   }
 
   async function moveDish(group: Dish[], index: number, direction: -1 | 1) {
+    if (demoMode) return
     const other = index + direction
     if (other < 0 || other >= group.length) return
     const reordered = [...group]; [reordered[index], reordered[other]] = [reordered[other], reordered[index]]
@@ -129,6 +136,7 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
   }
 
   async function removeDish(dish: Dish) {
+    if (demoMode) return
     if (!confirm(`Delete “${dish.name}”? This cannot be undone.`)) return
     setBusy(dish.id); setMessage(null)
     try { await mutate('/api/menu/dishes', 'DELETE', { id: dish.id }); setDishes(items => items.filter(item => item.id !== dish.id)); if (draft.id === dish.id) setDraft(emptyDish); notify('success', 'Dish deleted.') }
@@ -139,7 +147,8 @@ export default function MenuManager({ initialCategories, initialDishes, restaura
     return <article className={`menu-admin-dish ${dish.is_available ? '' : 'is-hidden'}`}><span className={`food-marker ${dish.is_veg ? 'veg' : 'nonveg'}`} aria-label={dish.is_veg ? 'Vegetarian' : 'Non-vegetarian'} /><div className="menu-admin-dish-copy"><b>{dish.name}</b><small>{dish.description || 'No description'} · ₹{Number(dish.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</small></div><div className="dish-sort"><button title="Move dish up" disabled={index === 0 || busy === 'sort-dish'} onClick={() => moveDish(group, index, -1)}>↑</button><button title="Move dish down" disabled={index === group.length - 1 || busy === 'sort-dish'} onClick={() => moveDish(group, index, 1)}>↓</button></div><label className="availability-toggle"><input type="checkbox" checked={dish.is_available} disabled={busy === dish.id} onChange={() => patchDish(dish, { isAvailable: !dish.is_available })} /><span />{dish.is_available ? 'Live' : 'Hidden'}</label><button onClick={() => editDish(dish)}>Edit</button><button className="danger-link" disabled={busy === dish.id} onClick={() => removeDish(dish)}>Delete</button></article>
   }
 
-  return <main className="menu-admin-page"><header className="menu-admin-topbar"><div><a href="/dashboard">← Dashboard</a><h1>{restaurantName} menu</h1><p>Manage what guests see when they scan your QR code.</p></div><a className="outline-button-large" href={menuUrl} target="_blank" rel="noreferrer">View live menu ↗</a></header>
+  return <main className="menu-admin-page"><header className="menu-admin-topbar"><div><a href="/dashboard">← Dashboard</a><h1>{restaurantName} menu</h1><p>Manage what guests see when they scan your QR code.</p>{demoMode && <small className="dashboard-sample-note">Sample menu data · editing is disabled</small>}</div><a className="outline-button-large" href={menuUrl} target="_blank" rel="noreferrer">View live menu ↗</a></header>
+    <p style={{ marginBottom: 20 }}><a href="/dashboard/ai-menu">Import menu photos with AI →</a></p>
     {message && <div className={`menu-flash ${message.kind}`} role="status">{message.text}<button aria-label="Dismiss" onClick={() => setMessage(null)}>×</button></div>}
     <div className="menu-admin-grid"><section className="menu-admin-main"><div className="menu-section-heading"><div><h2>Categories & dishes</h2><p>{dishes.length} dishes across {categories.length} categories</p></div><div className="menu-csv-tools"><input ref={csvInput} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><button type="button" onClick={downloadCsvTemplate}>CSV template</button><button type="button" disabled={busy === 'csv'} onClick={() => csvInput.current?.click()}>{busy === 'csv' ? 'Importing…' : 'Import CSV'}</button><a href="/api/menu/csv">Export CSV</a></div></div>
       {!categories.length && !dishes.length && <div className="menu-empty"><b>Your menu is ready for its first item.</b><p>Create a category, then add a dish using the forms on this page.</p></div>}

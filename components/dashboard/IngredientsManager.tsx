@@ -1,10 +1,10 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { Dish, DishIngredient, Ingredient } from '@/types'
 import { INGREDIENT_UNITS } from '@/lib/menu-validation'
 
-type Props = { initialIngredients: Ingredient[]; initialLinks: DishIngredient[]; dishes: Dish[]; restaurantName: string }
+type Props = { initialIngredients: Ingredient[]; initialLinks: DishIngredient[]; dishes: Dish[]; restaurantName: string; demoMode?: boolean }
 type Draft = { id?: string; name: string; quantity: string; unit: string; lowStockThreshold: string; isActive: boolean }
 const emptyDraft: Draft = { name: '', quantity: '', unit: 'g', lowStockThreshold: '0', isActive: true }
 
@@ -15,7 +15,7 @@ async function mutate(url: string, method: string, body: object) {
   return result
 }
 
-export default function IngredientsManager({ initialIngredients, initialLinks, dishes, restaurantName }: Props) {
+export default function IngredientsManager({ initialIngredients, initialLinks, dishes, restaurantName, demoMode = false }: Props) {
   const [ingredients, setIngredients] = useState(initialIngredients)
   const [links, setLinks] = useState(initialLinks)
   const [draft, setDraft] = useState<Draft>(emptyDraft)
@@ -27,8 +27,13 @@ export default function IngredientsManager({ initialIngredients, initialLinks, d
   const lowStock = ingredients.filter(item => item.is_active && Number(item.quantity) <= Number(item.low_stock_threshold))
   const linkedCount = useMemo(() => new Set(links.map(link => link.ingredient_id)).size, [links])
   const notify = (kind: 'error' | 'success', text: string) => setMessage({ kind, text })
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('ingredient'), item = initialIngredients.find(ingredient => ingredient.id === id)
+    if (item) setDraft({ id: item.id, name: item.name, quantity: String(item.quantity), unit: item.unit, lowStockThreshold: String(item.low_stock_threshold), isActive: item.is_active })
+  }, [initialIngredients])
 
   async function saveIngredient(event: FormEvent) {
+    if (demoMode) { event.preventDefault(); return }
     event.preventDefault(); setBusy('ingredient'); setMessage(null)
     const payload = { name: draft.name, quantity: draft.quantity, unit: draft.unit, lowStockThreshold: draft.lowStockThreshold, isActive: draft.isActive }
     try {
@@ -49,12 +54,14 @@ export default function IngredientsManager({ initialIngredients, initialLinks, d
   }
 
   async function toggleIngredient(item: Ingredient) {
+    if (demoMode) return
     setBusy(item.id)
     try { const result = await mutate('/api/inventory/ingredients', 'PATCH', { id: item.id, isActive: !item.is_active }); setIngredients(items => items.map(current => current.id === item.id ? result.ingredient : current)) }
     catch (error) { notify('error', error instanceof Error ? error.message : 'Could not update ingredient.') } finally { setBusy('') }
   }
 
   async function removeIngredient(item: Ingredient) {
+    if (demoMode) return
     if (!confirm(`Delete “${item.name}”? It will be removed from every linked dish.`)) return
     setBusy(item.id)
     try { await mutate('/api/inventory/ingredients', 'DELETE', { id: item.id }); setIngredients(items => items.filter(current => current.id !== item.id)); setLinks(items => items.filter(link => link.ingredient_id !== item.id)); setRecipeDraft(items => items.filter(link => link.ingredient_id !== item.id)); notify('success', 'Ingredient deleted.') }
@@ -70,6 +77,7 @@ export default function IngredientsManager({ initialIngredients, initialLinks, d
   function updateRecipe(index: number, change: Partial<DishIngredient>) { setRecipeDraft(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...change } : item)) }
 
   async function saveRecipe() {
+    if (demoMode) return
     if (!selectedDish) return
     setBusy('recipe'); setMessage(null)
     try {
@@ -78,7 +86,7 @@ export default function IngredientsManager({ initialIngredients, initialLinks, d
     } catch (error) { notify('error', error instanceof Error ? error.message : 'Could not save dish ingredients.') } finally { setBusy('') }
   }
 
-  return <main className="menu-admin-page"><header className="menu-admin-topbar"><div><a href="/dashboard">← Dashboard</a><h1>{restaurantName} inventory</h1><p>Track ingredients and connect them to dishes.</p></div><a className="outline-button-large" href="/dashboard/menu">Manage dishes →</a></header>
+  return <main className="menu-admin-page"><header className="menu-admin-topbar"><div><a href="/dashboard">← Dashboard</a><h1>{restaurantName} inventory</h1><p>Track ingredients and connect them to dishes.</p>{demoMode && <small className="dashboard-sample-note">Sample inventory data - editing is disabled</small>}</div><a className="outline-button-large" href="/dashboard/menu">Manage dishes →</a></header>
     {message && <div className={`menu-flash ${message.kind}`} role="status">{message.text}<button aria-label="Dismiss" onClick={() => setMessage(null)}>×</button></div>}
     <section className="inventory-metrics"><div><small>Total ingredients</small><b>{ingredients.length}</b></div><div><small>Low or out of stock</small><b className={lowStock.length ? 'stock-danger' : ''}>{lowStock.length}</b></div><div><small>Linked to dishes</small><b>{linkedCount}</b></div></section>
     <div className="menu-admin-grid inventory-grid"><section className="menu-admin-main"><div className="menu-section-heading"><div><h2>Ingredient stock</h2><p>Quantities are managed manually until order automation is added.</p></div></div>{!ingredients.length ? <div className="menu-empty"><b>No ingredients yet.</b><p>Add your first stock item using the form.</p></div> : <div className="ingredient-table"><div className="ingredient-table-head"><span>Ingredient</span><span>Stock</span><span>Status</span><span>Actions</span></div>{ingredients.map(item => { const isLow = item.is_active && Number(item.quantity) <= Number(item.low_stock_threshold); return <article key={item.id}><div><b>{item.name}</b><small>{links.filter(link => link.ingredient_id === item.id).length} linked dishes</small></div><strong>{Number(item.quantity).toLocaleString('en-IN')} {item.unit}<small>Alert at {Number(item.low_stock_threshold).toLocaleString('en-IN')} {item.unit}</small></strong><span className={`stock-badge ${!item.is_active ? 'inactive' : isLow ? 'low' : 'good'}`}>{!item.is_active ? 'Inactive' : Number(item.quantity) === 0 ? 'Out of stock' : isLow ? 'Low stock' : 'In stock'}</span><div className="ingredient-actions"><button onClick={() => editIngredient(item)}>Edit</button><button disabled={busy === item.id} onClick={() => toggleIngredient(item)}>{item.is_active ? 'Disable' : 'Enable'}</button><button className="danger-link" disabled={busy === item.id} onClick={() => removeIngredient(item)}>Delete</button></div></article> })}</div>}</section>

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
-export function rejectUnsafeRequest(request: Request, multipart = false) {
+export function rejectUnsafeRequest(request: Request, multipart = false, maxBytes?: number) {
   const contentLength = Number(request.headers.get('content-length') || 0)
-  if (contentLength > (multipart ? 4 * 1024 * 1024 + 65536 : 32_000)) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 })
+  if (contentLength > (maxBytes ?? (multipart ? 4 * 1024 * 1024 + 65536 : 32_000))) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 })
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== (multipart ? 'multipart/form-data' : 'application/json')) {
     return NextResponse.json({ error: 'Content-Type must be application/json.' }, { status: 415 })
   }

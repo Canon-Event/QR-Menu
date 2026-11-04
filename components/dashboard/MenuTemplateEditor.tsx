@@ -1,216 +1,149 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState, type FormEvent, type SetStateAction } from 'react'
 import type { Category } from '@/types'
-import type { CategoryPresentation } from '@/lib/menu-layout'
+import { defaults, names, resolveMenuDesign, menuColorContrast, menuCopyLimits, sizeControls, heritageTextControls, bistroTextControls, italianTextControls, bloomTextControls, bistroImageControls, bloomImageControls, type Design, type ImageKey } from '@/lib/menu-design'
 import CategoryArtworkControls from './CategoryArtworkControls'
 
-type Design = {
-  font: string
-  primaryColor: string
-  imageUrl: string
-  restaurantNameSize: number
-  subtitleSize: number
-  menuTitleSize: number
-  categorySize: number
-  dishNameSize: number
-  descriptionSize: number
-  priceSize: number
-  addressSize: number
-  coverEyebrow?: string
-  coverSideNote?: string
-  coverTagline?: string
-  menuLabel?: string
-  sectionKicker?: string
-  categoryTagline?: string
-  thankYouTitle?: string
-  thankYouSubtitle?: string
-  thankYouMessage?: string
-  openingHours?: string
-  coverMenuNote?: string
-  coverFooter?: string
-  socialHandle?: string
-  reserveLabel?: string
-  reserveMessage?: string
-  ingredientNoteTitle?: string
-  ingredientNote?: string
-  closingFooter?: string
-  menuImageOne?: string
-  menuImageTwo?: string
-  menuImageThree?: string
-  menuImageFour?: string
-  backImageUrl?: string
-  menuPageLayout?: 'four' | 'botanical' | 'both'
-  categoryPresentation?: CategoryPresentation
-}
-type SizeKey = 'restaurantNameSize' | 'subtitleSize' | 'menuTitleSize' | 'categorySize' | 'dishNameSize' | 'descriptionSize' | 'priceSize' | 'addressSize'
-type ImageKey = 'imageUrl' | 'menuImageOne' | 'menuImageTwo' | 'menuImageThree' | 'menuImageFour' | 'backImageUrl'
-type FontMeta = { family: string; category: string; variants: string[] }
+type Props = { template: string; savedDesign?: Partial<Design>; categories: Category[]; uncategorizedCount: number; restaurantId?: string; activeTemplate?: string; slug?: string }
+const serialize = (design: Design) => JSON.stringify(design)
+const fontChoices = [['serif','Georgia · classic'],['sans','Manrope · modern'],['display','DM Serif · editorial'],['playfair','Playfair Display'],['cinzel','Cinzel'],['cormorant','Cormorant Garamond'],['poppins','Poppins'],['great-vibes','Great Vibes · script'],['kalam','Kalam · handwritten'],['patrick-hand','Patrick Hand'],['bodoni-moda','Bodoni Moda']]
 
-const defaults: Record<string, Design> = {
-  A: { font: 'serif', primaryColor: '#854d48', imageUrl: '', restaurantNameSize: 38, subtitleSize: 12, menuTitleSize: 64, categorySize: 16, dishNameSize: 14, descriptionSize: 12, priceSize: 14, addressSize: 10 },
-  B: { font: 'display', primaryColor: '#294236', imageUrl: '', restaurantNameSize: 68, subtitleSize: 13, menuTitleSize: 34, categorySize: 38, dishNameSize: 15, descriptionSize: 12, priceSize: 15, addressSize: 11, coverEyebrow: 'GOOD FOOD · BRIGHTER DAYS', coverSideNote: 'FRESH INGREDIENTS · GREAT COMPANY', coverTagline: 'Eat well · Be together', menuLabel: 'MENU', coverMenuNote: 'Thoughtfully crafted for brighter gatherings', coverFooter: 'A warmer table for a brighter tomorrow', sectionKicker: 'Simple ingredients · extraordinary moments', categoryTagline: 'Fresh flavours, brighter days', thankYouTitle: 'Thank You', thankYouSubtitle: 'for Dining With Us', thankYouMessage: 'Thank you for being part of our table. Good food tastes even better when shared.', openingHours: 'Please contact us for today’s hours', socialHandle: '@yourrestaurant', reserveLabel: 'RESERVE A TABLE', reserveMessage: 'Good food brings people together', ingredientNoteTitle: 'A NOTE ON INGREDIENTS', ingredientNote: 'We use fresh, high-quality ingredients and are happy to assist with dietary requirements or allergen information.', closingFooter: 'A brighter tomorrow tastes better together', menuImageOne: '', menuImageTwo: '', menuImageThree: '', menuImageFour: '', backImageUrl: '' },
-  C: { font: 'bodoni-moda', primaryColor: '#601b28', imageUrl: '', restaurantNameSize: 82, subtitleSize: 14, menuTitleSize: 58, categorySize: 54, dishNameSize: 16, descriptionSize: 12, priceSize: 15, addressSize: 11, coverEyebrow: 'GOOD FOOD · BRIGHTER PEOPLE', coverSideNote: 'GOOD FOOD · BRIGHTER CONVERSATIONS', menuLabel: 'Menu', coverTagline: 'TIMELESS FLAVOURS · BEAUTIFUL MOMENTS', coverFooter: 'A TABLE FOR BRIGHTER DAYS', sectionKicker: 'ESTABLISHED', categoryTagline: 'SMALL PLATES · BEAUTIFUL MOMENTS', thankYouTitle: 'Thank You', thankYouSubtitle: 'FOR BEING PART OF OUR STORY', thankYouMessage: 'Your presence at our table means the world to us. Great food creates kinder conversations, brighter days, and a more beautiful tomorrow.', openingHours: 'Please contact us for today’s opening hours', socialHandle: '@yourrestaurant', reserveLabel: 'RESERVE A TABLE', reserveMessage: 'Scan the QR code to revisit our menu', closingFooter: 'À BIENTÔT' },
-  D: { font: 'kalam', primaryColor: '#315d17', imageUrl: '', restaurantNameSize: 76, subtitleSize: 14, menuTitleSize: 28, categorySize: 42, dishNameSize: 15, descriptionSize: 12, priceSize: 15, addressSize: 10, menuLabel: 'MENU', coverTagline: 'All Day Breakfast • Café • Mocktails', sectionKicker: 'Breakfast Delights', categoryTagline: 'Freshly made • served all day', thankYouTitle: 'Thank You', thankYouSubtitle: 'for brunching with us', thankYouMessage: 'Good food tastes better when shared.', openingHours: 'Mon – Sun\n8:00 AM – 5:00 PM', socialHandle: '@yourrestaurant', reserveMessage: 'Scan for Menu, Feedback & More', closingFooter: 'See you again soon', backImageUrl: '' },
-}
-const names: Record<string, string> = { A: 'Heritage', B: 'Green Bistro', C: 'Italian', D: 'Bloom & Brunch' }
-const bistroTextControls: { key: keyof Design; label: string; multiline?: boolean }[] = [
-  { key: 'coverEyebrow', label: 'Cover left note' },
-  { key: 'coverSideNote', label: 'Cover right note' },
-  { key: 'coverTagline', label: 'Cover tagline' },
-  { key: 'menuLabel', label: 'Menu title' },
-  { key: 'coverMenuNote', label: 'Cover menu note' },
-  { key: 'coverFooter', label: 'Cover footer line' },
-  { key: 'sectionKicker', label: 'Section image caption' },
-  { key: 'categoryTagline', label: 'Category tagline' },
-  { key: 'thankYouTitle', label: 'Closing title' },
-  { key: 'thankYouSubtitle', label: 'Closing subtitle' },
-  { key: 'thankYouMessage', label: 'Closing message', multiline: true },
-  { key: 'openingHours', label: 'Opening hours', multiline: true },
-  { key: 'socialHandle', label: 'Social handle' },
-  { key: 'reserveLabel', label: 'Reservation label' },
-  { key: 'reserveMessage', label: 'Reservation message' },
-  { key: 'ingredientNoteTitle', label: 'Ingredient note title' },
-  { key: 'ingredientNote', label: 'Ingredient note', multiline: true },
-  { key: 'closingFooter', label: 'Closing footer' },
-]
-const italianTextControls: { key: keyof Design; label: string; multiline?: boolean }[] = [
-  { key: 'coverEyebrow', label: 'Closing-page left note' },
-  { key: 'coverSideNote', label: 'Top-right note' },
-  { key: 'menuLabel', label: 'Menu title' },
-  { key: 'coverTagline', label: 'Menu tagline' },
-  { key: 'coverFooter', label: 'Lower-left note' },
-  { key: 'sectionKicker', label: 'Establishment line' },
-  { key: 'categoryTagline', label: 'Category tagline' },
-  { key: 'thankYouTitle', label: 'Closing title' },
-  { key: 'thankYouSubtitle', label: 'Closing subtitle' },
-  { key: 'thankYouMessage', label: 'Closing message', multiline: true },
-  { key: 'openingHours', label: 'Opening hours', multiline: true },
-  { key: 'socialHandle', label: 'Social handle' },
-  { key: 'reserveLabel', label: 'Reservation label' },
-  { key: 'reserveMessage', label: 'Reservation message' },
-  { key: 'closingFooter', label: 'Closing footer' },
-]
-const bloomTextControls: { key: keyof Design; label: string; multiline?: boolean }[] = [
-  { key: 'menuLabel', label: 'Cover menu label' },
-  { key: 'coverTagline', label: 'Cover tagline' },
-  { key: 'sectionKicker', label: 'Menu page title' },
-  { key: 'categoryTagline', label: 'Category tagline' },
-  { key: 'thankYouTitle', label: 'Closing title' },
-  { key: 'thankYouSubtitle', label: 'Closing subtitle' },
-  { key: 'thankYouMessage', label: 'Closing message', multiline: true },
-  { key: 'openingHours', label: 'Opening hours', multiline: true },
-  { key: 'socialHandle', label: 'Social handle' },
-  { key: 'reserveMessage', label: 'QR code message', multiline: true },
-  { key: 'closingFooter', label: 'Closing footer' },
-]
-const bistroImageControls: { key: ImageKey; label: string; fallback: string }[] = [
-  { key: 'imageUrl', label: 'Cover image', fallback: 'Supplied steak cover' },
-  { key: 'menuImageOne', label: 'Default starter photo', fallback: 'Starter artwork' },
-  { key: 'menuImageTwo', label: 'Default pasta photo', fallback: 'Pasta artwork' },
-  { key: 'menuImageThree', label: 'Default drinks photo', fallback: 'Drinks artwork' },
-  { key: 'menuImageFour', label: 'Default grill photo', fallback: 'Grill artwork' },
-  { key: 'backImageUrl', label: 'Closing-page image', fallback: 'Supplied bistro image' },
-]
-const bloomImageControls: { key: ImageKey; label: string; fallback: string }[] = [
-  { key: 'imageUrl', label: 'Cover artwork', fallback: 'Bloom & Brunch watercolor cover' },
-  { key: 'menuImageOne', label: 'Inner-page artwork', fallback: 'Tuscan breakfast watercolor page' },
-  { key: 'menuImageTwo', label: 'Drinks-page artwork', fallback: 'Citrus and mocktail watercolor page' },
-  { key: 'backImageUrl', label: 'Closing-page artwork', fallback: 'Countryside thank-you watercolor page' },
-]
-const sizeControls: { key: SizeKey; label: string; min: number; max: number }[] = [
-  { key: 'restaurantNameSize', label: 'Restaurant name', min: 14, max: 72 },
-  { key: 'subtitleSize', label: 'Subtitle', min: 8, max: 36 },
-  { key: 'menuTitleSize', label: 'MENU title', min: 24, max: 96 },
-  { key: 'categorySize', label: 'Category heading', min: 10, max: 72 },
-  { key: 'dishNameSize', label: 'Dish name', min: 10, max: 32 },
-  { key: 'descriptionSize', label: 'Dish description', min: 8, max: 26 },
-  { key: 'priceSize', label: 'Price', min: 10, max: 32 },
-  { key: 'addressSize', label: 'Address', min: 8, max: 24 },
-]
-
-export default function MenuTemplateEditor({ template, savedDesign, categories, uncategorizedCount }: { template: string; savedDesign?: Partial<Design>; categories: Category[]; uncategorizedCount: number }) {
-  const router = useRouter()
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const initialDesign = useMemo(() => ({ ...defaults[template], ...(template === 'B' ? { menuPageLayout: 'both' as const } : {}), ...(savedDesign || {}) }), [savedDesign, template])
-  const [draft, setDraft] = useState<Design>(initialDesign)
-  const [fonts, setFonts] = useState<FontMeta[]>([])
-  const [fontsState, setFontsState] = useState('Loading Google Fonts…')
+export default function MenuTemplateEditor({ template, savedDesign, categories, uncategorizedCount, restaurantId = 'restaurant', activeTemplate, slug }: Props) {
+  const initial = resolveMenuDesign(template, savedDesign)
+  const [draft, updateDraft] = useState<Design>(initial)
+  const [saved, setSaved] = useState<Design>(initial)
+  const [history, setHistory] = useState<Design[]>([])
+  const [recovered, setRecovered] = useState<Design | null>(null)
   const [busy, setBusy] = useState(false)
-  const [uploading, setUploading] = useState<ImageKey | ''>('')
+  const [uploading, setUploading] = useState('')
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [fonts, setFonts] = useState<string[]>([])
+  const [fontMessage, setFontMessage] = useState('')
+  const [view, setView] = useState('edit')
+  const [previewMode, setPreviewMode] = useState('fit')
+  const [previewWidth, setPreviewWidth] = useState(0)
+  const [previewReady, setPreviewReady] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const storageKey = `wiit:menu-draft:${restaurantId}:${template}`
+  const dirty = serialize(draft) !== serialize(saved)
+  const contrast = menuColorContrast(draft.primaryColor, template)
+  const textControls = template === 'B' ? bistroTextControls : template === 'C' ? italianTextControls : template === 'D' ? bloomTextControls : heritageTextControls
+  const imageControls = template === 'B' ? bistroImageControls : template === 'D' ? bloomImageControls : bistroImageControls.slice(0, 1)
 
-  function sendDraft() {
-    iframeRef.current?.contentWindow?.postMessage({ type: 'qrmenu:template-draft', design: draft }, window.location.origin)
+  function setDraft(value: SetStateAction<Design>) {
+    const previous = draftRef.current
+    const next = typeof value === 'function' ? value(previous) : value
+    if (serialize(next) === serialize(previous)) return
+    setHistory(current => [...current.slice(-49), previous])
+    if (serialize(next) === serialize(saved)) { try { sessionStorage.removeItem(storageKey) } catch {} }
+    draftRef.current = next; updateDraft(next); setMessage(''); setError('')
   }
-
+  function undo() {
+    if (!history.length) return
+    const previous=history[history.length - 1]
+    updateDraft(previous); setHistory(history.slice(0, -1)); setMessage('Last edit undone.'); setError('')
+    if (serialize(previous) === serialize(saved)) { try { sessionStorage.removeItem(storageKey) } catch {} }
+  }
+  function sendDraft() { iframeRef.current?.contentWindow?.postMessage({ type: 'qrmenu:template-draft', design: draftRef.current }, window.location.origin) }
   useEffect(() => { sendDraft() }, [draft])
   useEffect(() => {
     const onReady = (event: MessageEvent) => {
-      if (event.origin === window.location.origin && event.source === iframeRef.current?.contentWindow && event.data?.type === 'qrmenu:preview-ready') sendDraft()
+      if (event.origin === window.location.origin && event.source === iframeRef.current?.contentWindow && event.data?.type === 'qrmenu:preview-ready') { setPreviewReady(true); sendDraft() }
     }
     window.addEventListener('message', onReady)
-    return () => window.removeEventListener('message', onReady)
-  }, [draft])
+    const observer = new ResizeObserver(entries => setPreviewWidth(Math.round(entries[0].contentRect.width)))
+    if (iframeRef.current) observer.observe(iframeRef.current)
+    return () => { window.removeEventListener('message', onReady); observer.disconnect() }
+  }, [])
   useEffect(() => {
-    let active = true
-    fetch('/api/google-fonts').then(async response => {
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result.error || 'Could not load Google Fonts.')
-      if (active) {
-        const list = Array.isArray(result.fonts) ? result.fonts : []
-        setFonts(list)
-        setFontsState(`${list.length} Google Fonts available`)
-      }
-    }).catch(error => { if (active) setFontsState(error instanceof Error ? error.message : 'Could not load Google Fonts.') })
-    return () => { active = false }
+    try { const cached = JSON.parse(sessionStorage.getItem(storageKey) || 'null'); if (cached?.base === serialize(initial) && cached.draft) setRecovered(cached.draft) } catch { /* Recovery is optional. */ }
+  }, [storageKey])
+  useEffect(() => {
+    if (dirty) { try { sessionStorage.setItem(storageKey, JSON.stringify({ base: serialize(saved), draft })) } catch { /* Saving remains available. */ } }
+  }, [draft, saved, dirty, storageKey])
+  useEffect(() => {
+    if (!dirty) return
+    const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    const navigate = (event: MouseEvent) => {
+      const anchor = (event.target as Element).closest?.('a[href]') as HTMLAnchorElement | null
+      if (!anchor || anchor.target === '_blank' || anchor.getAttribute('href')?.startsWith('#') || event.ctrlKey || event.metaKey) return
+      if (!window.confirm('Leave with unsaved changes? Your draft is kept in this tab, but is not published.')) { event.preventDefault(); event.stopPropagation() }
+    }
+    window.addEventListener('beforeunload', unload); document.addEventListener('click', navigate, true)
+    return () => { window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigate, true) }
+  }, [dirty])
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/google-fonts', { signal: controller.signal }).then(async response => {
+      if (!response.ok) throw new Error('Font catalogue unavailable')
+      const result = await response.json()
+      setFonts(Array.isArray(result.fonts) ? result.fonts.map((font: { family: string }) => font.family) : [])
+    }).catch(reason => { if (reason.name !== 'AbortError') setFontMessage('Font catalogue unavailable. Built-in fonts still work.') })
+    return () => controller.abort()
   }, [])
 
   async function save(event: FormEvent) {
-    event.preventDefault()
-    setBusy(true)
-    setMessage('')
-    const response = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ section: 'template_customization', template, ...draft }) })
-    const result = await response.json().catch(() => ({}))
-    setBusy(false)
-    if (!response.ok) return setMessage(result.error || 'Could not save this design.')
-    setMessage('All design changes are saved.')
-    router.refresh()
+    event.preventDefault(); setBusy(true); setError(''); setMessage('')
+    try {
+      if (!/^[A-Za-z0-9 .'-]{1,100}$/.test(draft.font)) throw new Error('Enter a font family name using letters, numbers, spaces or hyphens.')
+      const payload = resolveMenuDesign(template, draft)
+      const response = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ section: 'template_customization', template, ...payload }) })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || 'Could not save this design. Please try again.')
+      const persisted = resolveMenuDesign(template, result.restaurant?.template_settings?.[template] || payload)
+      updateDraft(persisted); setSaved(persisted); setHistory([]); setRecovered(null)
+      try { sessionStorage.removeItem(storageKey) } catch { /* optional recovery */ }
+      setMessage(activeTemplate === template ? 'Saved. Your live menu is up to date.' : 'Design saved. Choose “Use” in templates to make it live.')
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Connection lost. Your edits are still here. Try saving again.') }
+    finally { setBusy(false) }
   }
-
   async function uploadImage(slot: ImageKey, file?: File, categoryId?: string) {
     if (!file) return
-    setUploading(slot)
-    setMessage('')
-    const form = new FormData()
-    form.append('image', file)
-    form.append('slot', slot)
-    const response = await fetch('/api/settings/template-image', { method: 'POST', body: form })
-    const result = await response.json().catch(() => ({}))
-    setUploading('')
-    if (!response.ok) return setMessage(result.error || 'Could not upload image.')
-    setDraft(current => categoryId ? ({ ...current, categoryPresentation: { ...current.categoryPresentation, [categoryId]: { ...current.categoryPresentation?.[categoryId], imageUrl: result.imageUrl } } }) : ({ ...current, [slot]: result.imageUrl }))
-    setMessage('Image uploaded. Save changes to publish it.')
+    setUploading(categoryId || slot); setError(''); setMessage('')
+    try {
+      const form = new FormData(); form.append('image', file); form.append('slot', slot)
+      const response = await fetch('/api/settings/template-image', { method: 'POST', body: form })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.imageUrl) throw new Error(result.error || 'Image upload failed. Please try again.')
+      setDraft(current => categoryId ? { ...current, categoryPresentation: { ...current.categoryPresentation, [categoryId]: { ...current.categoryPresentation?.[categoryId], imageUrl: result.imageUrl } } } : { ...current, [slot]: result.imageUrl })
+      setMessage('Image added to your preview. Save to keep it.')
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Upload failed. Please try again.') }
+    finally { setUploading('') }
   }
 
-  return <main className="template-workspace">
-    <header className="template-workspace-header"><div><a href="/dashboard/templates">← All templates</a><span>EDITING TEMPLATE</span><h1>{names[template]} menu</h1></div><div><p className={message ? 'show' : ''} role="status">{message}</p><button type="submit" form="template-design-form" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button></div></header>
-    <div className="template-workspace-grid">
-      <form id="template-design-form" className="template-workspace-controls" onSubmit={save}>
-        <CategoryArtworkControls categories={categories} uncategorizedCount={uncategorizedCount} template={template} value={draft.categoryPresentation || {}} onChange={categoryPresentation => setDraft(current => ({ ...current, categoryPresentation }))} onUpload={(id, file) => uploadImage('menuImageOne', file, id)} uploading={Boolean(uploading)} />
-        {template === 'B' && <section className="workspace-layout-section"><header><b>Menu page structure</b><small>Choose either inner-page design, or include both designs in the published menu.</small></header><div className="workspace-layout-options">{[
-          { value: 'both', title: 'Match categories to both designs', description: 'Starters, salads and drinks on the split page; pasta, pizza, grill and desserts on the four-section page. Each dish appears once.' },
-          { value: 'botanical', title: 'Split page', description: 'Starters on the left, with two sections on the right.' },
-          { value: 'four', title: 'Four sections', description: 'Stack four menu categories with large food images.' },
-        ].map(option => <label className={draft.menuPageLayout === option.value ? 'active' : ''} key={option.value}><input type="radio" name="menuPageLayout" value={option.value} checked={draft.menuPageLayout === option.value} onChange={() => setDraft({ ...draft, menuPageLayout: option.value as Design['menuPageLayout'] })}/><b>{option.title}</b><span>{option.description}</span></label>)}</div></section>}
-        {template === 'B' && <section><header><b>Menu wording</b><small>Every decorative line is editable. Restaurant details, categories and dishes come from your dashboard.</small></header><div className="workspace-copy-list">{bistroTextControls.map(control => <label key={control.key}>{control.label}{control.multiline ? <textarea rows={3} maxLength={240} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/> : <input maxLength={100} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/>}</label>)}</div></section>}
-        {template === 'C' && <section><header><b>Menu wording</b><small>Edit the cover, menu-page and closing-page wording. Restaurant contact details come from restaurant settings.</small></header><div className="workspace-copy-list">{italianTextControls.map(control => <label key={control.key}>{control.label}{control.multiline ? <textarea rows={3} maxLength={240} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/> : <input maxLength={100} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/>}</label>)}</div></section>}
-        {template === 'D' && <section><header><b>Menu wording</b><small>Restaurant details, categories, dishes and prices stay connected to your dashboard.</small></header><div className="workspace-copy-list">{bloomTextControls.map(control => <label key={control.key}>{control.label}{control.multiline ? <textarea rows={3} maxLength={240} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/> : <input maxLength={100} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/>}</label>)}</div></section>}
-        <section><header><b>Typography</b><small>Choose a heading font and control every line separately.</small></header><label>Google Font <span>{fontsState}</span><input list="workspace-google-fonts" value={draft.font} placeholder="Search Google Fonts" autoComplete="off" onChange={event => setDraft({ ...draft, font: event.target.value })}/><datalist id="workspace-google-fonts"><option value="serif">Georgia Heritage</option><option value="sans">Manrope Modern</option><option value="display">DM Serif Display</option><option value="great-vibes">Great Vibes Script</option><option value="kalam">Kalam Handwritten</option><option value="patrick-hand">Patrick Hand</option><option value="bodoni-moda">Bodoni Moda Italic</option>{fonts.map(font => <option key={font.family} value={font.family}>{font.category}</option>)}</datalist></label><div className="workspace-size-list">{sizeControls.map(control => <label key={control.key}><span>{control.label}</span><div><input type="range" min={control.min} max={control.max} step="1" value={draft[control.key]} onChange={event => setDraft({ ...draft, [control.key]: Number(event.target.value) })}/><input type="number" min={control.min} max={control.max} step="1" value={draft[control.key]} aria-label={`${control.label} in pixels`} onChange={event => setDraft({ ...draft, [control.key]: Number(event.target.value) })}/><b>px</b></div></label>)}</div></section>
-        <section><header><b>Colors & artwork</b><small>Upload an image or use a secure URL. Changes appear instantly.</small></header><label>Primary color<div className="workspace-color"><input type="color" value={draft.primaryColor} onChange={event => setDraft({ ...draft, primaryColor: event.target.value })}/><input value={draft.primaryColor} pattern="#[0-9a-fA-F]{6}" onChange={event => setDraft({ ...draft, primaryColor: event.target.value })}/></div></label>{(template === 'B' ? bistroImageControls : template === 'D' ? bloomImageControls : bistroImageControls.slice(0, 1)).map(control => <div className="workspace-image-control" key={control.key}><label>{control.label}<span>{draft[control.key] ? 'Custom image selected' : control.fallback}</span><input type="url" placeholder="https://example.com/image.jpg" value={draft[control.key] || ''} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })}/></label><label className="workspace-upload-button">{uploading === control.key ? 'Uploading…' : 'Upload image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={event => uploadImage(control.key, event.target.files?.[0])}/></label>{draft[control.key] && <button type="button" onClick={() => setDraft({ ...draft, [control.key]: '' })}>Use default image</button>}</div>)}</section>
+  return <main className="menu-editor" data-view={view}>
+    <header className="me-header"><div><a href="/dashboard/templates">← All templates</a><h1>{names[template]} <span>Design studio</span></h1></div><div className="me-header-actions"><span className="me-save-state" aria-live="polite">{busy ? 'Saving…' : dirty ? 'Unsaved changes' : 'All changes saved'}</span><button type="submit" form="menu-design-form" className="me-primary" disabled={busy || Boolean(uploading) || !dirty}>{busy ? 'Saving…' : 'Save design'}</button></div></header>
+    {error && <div className="me-notice is-error" role="alert">{error}</div>}
+    {message && <div className="me-notice" role="status">{message}</div>}
+    {recovered && <div className="me-notice">You have an unsaved draft from this tab. <button onClick={() => { setDraft(recovered); setRecovered(null) }}>Restore draft</button><button onClick={() => { setRecovered(null); try { sessionStorage.removeItem(storageKey) } catch {} }}>Discard draft</button></div>}
+    <nav className="me-mobile-tabs" aria-label="Editor view"><button aria-pressed={view === 'edit'} onClick={() => setView('edit')}>Edit design</button><button aria-pressed={view === 'preview'} onClick={() => setView('preview')}>Preview menu</button></nav>
+    <div className="me-workspace">
+      <form id="menu-design-form" className="me-controls" onSubmit={save}>
+        <fieldset disabled={busy || Boolean(uploading)} className="me-fields">
+          <section className="me-intro"><h2>Make it yours</h2><p>Start with the essentials. Your dishes, prices and restaurant details stay connected.</p><div><a href="/dashboard/settings?tab=restaurant">Restaurant details ↗</a><a href="/dashboard/menu">Edit dishes ↗</a></div></section>
+          <details open className="me-group"><summary>Style & branding <span>Font and signature color</span></summary><div className="me-group-body">
+            <label>Heading font<select aria-label="Heading font" value={fontChoices.some(([key]) => key === draft.font) ? draft.font : 'custom'} onChange={event => setDraft({ ...draft, font: event.target.value === 'custom' ? '' : event.target.value })}>{fontChoices.map(([key,label]) => <option value={key} key={key}>{label}</option>)}<option value="custom">Choose a Google Font…</option></select><small>Headings use this font; dish text keeps a readable body font.</small></label>
+            {!fontChoices.some(([key]) => key === draft.font) && <label>Google Font family<input aria-label="Google Font family" list="me-fonts" value={draft.font} maxLength={100} required onChange={event => setDraft({ ...draft, font: event.target.value })} /><small>Custom fonts need an internet connection. A system serif is used while loading.</small></label>}
+            <datalist id="me-fonts">{fonts.map(font => <option key={font} value={font} />)}</datalist>{fontMessage && <small>{fontMessage}</small>}
+            <label>Signature color<div className="me-color"><input type="color" aria-label="Choose signature color" value={/^#[0-9a-f]{6}$/i.test(draft.primaryColor) ? draft.primaryColor : defaults[template].primaryColor} onChange={event => setDraft({ ...draft, primaryColor: event.target.value })} /><input aria-label="Signature color hex code" value={draft.primaryColor} pattern="#[0-9a-fA-F]{6}" required onChange={event => setDraft({ ...draft, primaryColor: event.target.value })} /></div><small>Choose a dark shade for readable headings on the paper background.</small></label>
+          </div></details>
+          {contrast > 0 && contrast < 4.5 && <div className="me-notice is-error" role="status">This color has low contrast on the menu paper ({contrast.toFixed(1)}:1). <button type="button" onClick={() => setDraft({ ...draft, primaryColor: defaults[template].primaryColor })}>Use template color</button></div>}
+          <details className="me-group"><summary>Menu categories <span>Arrangement and category artwork</span></summary><div className="me-group-body">
+            {template === 'B' && <label>Page arrangement<select value={draft.menuPageLayout} onChange={event => setDraft({ ...draft, menuPageLayout: event.target.value as Design['menuPageLayout'] })}><option value="both">Editorial columns</option><option value="botanical">Botanical columns</option><option value="four">Photo-led rows</option></select><small>Columns become a single readable list on phones.</small></label>}
+            <CategoryArtworkControls categories={categories} uncategorizedCount={uncategorizedCount} template={template} value={draft.categoryPresentation || {}} onChange={categoryPresentation => setDraft(current => ({ ...current, categoryPresentation }))} onUpload={(id, file) => uploadImage('menuImageOne', file, id)} uploading={Boolean(uploading)} />
+          </div></details>
+          {!!textControls.length && <details className="me-group"><summary>Menu wording <span>Cover, welcome and closing message</span></summary><div className="me-group-body">{textControls.map(control => <label key={control.key}>{control.label}{control.multiline ? <textarea aria-label={control.label} rows={3} maxLength={menuCopyLimits[control.key]} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })} /> : <input aria-label={control.label} maxLength={menuCopyLimits[control.key]} value={String(draft[control.key] || '')} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })} />}</label>)}</div></details>}
+          <details className="me-group"><summary>Images & backgrounds <span>Template artwork or your own images</span></summary><div className="me-group-body">{imageControls.map(control => <div className="me-image-control" key={control.key}><label>{control.label}<input type="url" pattern="https://.*" maxLength={2048} placeholder="https://example.com/image.jpg" value={draft[control.key] || ''} onChange={event => setDraft({ ...draft, [control.key]: event.target.value })} /><small>{draft[control.key] ? 'Custom image selected' : control.fallback}</small></label><label>Upload image<input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { uploadImage(control.key, event.target.files?.[0]); event.target.value = '' }} /></label>{draft[control.key] && <button type="button" onClick={() => setDraft({ ...draft, [control.key]: '' })}>Restore template image</button>}</div>)}</div></details>
+          <details className="me-group"><summary>Fine-tune typography <span>Optional size adjustments</span></summary><div className="me-group-body"><p>Cover headings adapt to screen width. Body text stays readable at every size.</p>{sizeControls.map(control => <label key={control.key}>{control.label}<div className="me-size"><input type="range" aria-label={`${control.label} size`} min={control.min} max={control.max} value={draft[control.key]} onChange={event => setDraft({ ...draft, [control.key]: Number(event.target.value) })} /><input type="number" aria-label={`${control.label} in pixels`} min={control.min} max={control.max} required value={draft[control.key]} onChange={event => setDraft({ ...draft, [control.key]: Number(event.target.value) })} /><span>px</span></div></label>)}</div></details>
+          <section className="me-history"><button type="button" disabled={!history.length} onClick={undo}>↶ Undo</button><button type="button" disabled={!dirty} onClick={() => { if (window.confirm('Discard edits and return to your last saved design?')) { setDraft(saved); try { sessionStorage.removeItem(storageKey) } catch {} } }}>Revert saved</button><button type="button" onClick={() => { if (window.confirm('Restore this template’s default design? Your dishes and prices stay unchanged. You can undo this before saving.')) setDraft(resolveMenuDesign(template)) }}>Reset design</button></section>
+        </fieldset>
+        {uploading && <p className="me-upload-status" role="status">Uploading image…</p>}
       </form>
-      <section className="template-workspace-preview"><header><div><i></i><span>Live preview</span></div><small>Updates before saving</small></header><div><iframe ref={iframeRef} onLoad={sendDraft} title={`${names[template]} menu live preview`} src={`/dashboard/menu-preview?template=${template}&embedded=1`} /></div></section>
+      <section className="me-preview" aria-label="Menu preview"><header><div><b>Live preview</b><small>{previewReady ? `${previewWidth}px wide · changes appear before saving` : 'Loading your menu…'}</small></div><div className="me-preview-modes"><button aria-pressed={previewMode === 'fit'} onClick={() => setPreviewMode('fit')}>Fit</button><button aria-pressed={previewMode === 'phone'} onClick={() => setPreviewMode('phone')}>Phone</button>{slug && <a href={`/menu/${slug}`} target="_blank" rel="noopener noreferrer">Live ↗</a>}</div></header><div className="me-preview-stage" data-mode={previewMode}><iframe ref={iframeRef} onLoad={sendDraft} title={`${names[template]} menu live preview`} src={`/dashboard/menu-preview?template=${template}&embedded=1`} /></div><footer>Your design is saved separately for each template. {activeTemplate === template ? 'Saving updates your live menu.' : 'This template is not currently live.'}</footer></section>
     </div>
   </main>
 }

@@ -9,33 +9,33 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: '#FFF3EA',
-          100: '#FFE1C7',
-          200: '#FDBE8A',
-          300: '#F79A5C',
-          400: '#F37A2E',
-          500: '#F15A00',
-          600: '#D94F00',
-          700: '#A83E02',
+          50: '#E8F4F6',
+          100: '#D5EAF0',
+          200: '#B3DCE4',
+          300: '#8AC9D5',
+          400: '#66BDCF',
+          500: '#4C9DB0',
+          600: '#26788B',
+          700: '#1B5E6D',
         },
         ink: {
-          DEFAULT: '#101A15',
+          DEFAULT: '#101828',
         },
         forest: {
-          DEFAULT: '#123A2A',
-          deep: '#0D2B20',
+          DEFAULT: '#4C9DB0',
+          deep: '#26788B',
         },
         sage: {
-          DEFAULT: '#E7EDE5',
-          dark: '#677867',
+          DEFAULT: '#E8F4F6',
+          dark: '#667085',
         },
-        muted: '#6D746F',
+        muted: '#667085',
         cream: {
-          DEFAULT: '#FAF7F1',
-          100: '#F6F0E6',
+          DEFAULT: '#F8FAFC',
+          100: '#F2F4F7',
         },
         surface: {
-          warm: '#E7EDE5',
+          warm: '#E8F4F6',
         },
       },
       fontFamily: {

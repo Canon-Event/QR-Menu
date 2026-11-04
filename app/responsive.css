@@ -16,7 +16,7 @@ html { scroll-padding-top: 24px; }
 .marketing-mobile-nav a[aria-current] { color: var(--brand); background: var(--soft); font-weight: 700; }
 .marketing-mobile-nav .button-dark { justify-content: center; margin-top: 8px; }
 .home-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); align-items: center; gap: clamp(24px, 5vw, 64px); padding-block: clamp(32px, 5vw, 64px) clamp(48px, 7vw, 88px); }
-.home-hero h1 { font-size: clamp(40px, 5.3vw, 72px); text-wrap: balance; }
+.home-hero h1 { font-size: clamp(40px, 5.3vw, 68px); text-wrap: balance; }
 .marketing-footer-grid { display: grid; grid-template-columns: 1.3fr repeat(3, .85fr) 1.1fr; gap: 32px; }
 .marketing-footer-grid > * { min-width: 0; }
 .marketing-footer-grid a { overflow-wrap: anywhere; }
@@ -294,7 +294,6 @@ html.dark .leave-portal-form label {
   color: #c7d5ca;
 }
 html.dark .inventory-row,
-html.dark .recent-item,
 html.dark .ems-edit,
 html.dark .ops-row button,
 html.dark .ops-tabs button,
@@ -310,7 +309,7 @@ html.dark .employee-modal textarea,
 html.dark .ems-form-grid input,
 html.dark .ems-form-grid select,
 html.dark .ems-filters select {
-  background: #202d26;
+  background: #1d2939;
   border-color: #405046;
   color: #eef5ef;
 }

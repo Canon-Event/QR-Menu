@@ -1,0 +1,57 @@
+const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID,createHash}=require('node:crypto')
+const {posDatabase}=require('./helpers/pos-database.cjs'),{paymentFixture}=require('./helpers/payment-fixture.cjs'),{loadServer}=require('./helpers/load-server.cjs')
+const env={TABLE_ACCESS_HASH_SECRET:'isolated-table-access-secret-only-1234'}
+const access=loadServer('lib/table-access-server.ts',{},env)
+test('server proof is deterministic for scan retries, scoped to a table, and ignores untrusted IP headers',()=>{
+  const nonce=randomUUID(),table=randomUUID(),token=access.scanToken('cafe',table,nonce)
+  assert.match(token,/^[a-f0-9]{64}$/);assert.equal(access.scanToken('cafe',table,nonce),token)
+  assert.notEqual(access.scanToken('other',table,nonce),token);assert.notEqual(access.scanToken('cafe',randomUUID(),nonce),token)
+  const a=new Request('https://shift.test',{headers:{'x-forwarded-for':'1.1.1.1'}}),b=new Request('https://shift.test',{headers:{'x-forwarded-for':'8.8.8.8'}})
+  assert.equal(access.tableIpHash(a),access.tableIpHash(b))
+  const trusted=loadServer('lib/table-access-server.ts',{}, {...env,VERCEL:'1'})
+  assert.notEqual(trusted.tableIpHash(new Request('https://shift.test',{headers:{'x-vercel-forwarded-for':'1.1.1.1'}})),trusted.tableIpHash(new Request('https://shift.test',{headers:{'x-vercel-forwarded-for':'8.8.8.8'}})))
+  assert.equal(access.accessToken(new Request('https://shift.test',{headers:{cookie:'wiit_table_cafe=1234'}}),'cafe'),null)
+})
+test('real HTTP handlers bind approval to an HttpOnly browser cookie, reject bypasses and emit shared 429 responses',async t=>{
+  const h=await posDatabase(),f=await paymentFixture(h);t.after(async()=>{await f.close();await h.db.close()})
+  await h.db.exec('reset role');await h.db.query("update restaurants set menu_mode='ordering' where id=$1",[h.restaurant]);await h.as(h.owner);await h.ownerAction('settings',h.settings)
+  const table=await h.ownerAction('table_create',{name:'Table 5',seats:4});const visit=await h.ownerAction('visit_open',{table_id:table.id,guest_name:'Dinner'})
+  const staffPath=`/api/table-access?restaurant=${h.restaurant}`
+  const callStaff=(action,data,actor=h.owner)=>f.runAs(actor,()=>f.api.tableStaff.POST(f.request(staffPath,{action,data})))
+  assert.equal((await callStaff('settings',{enabled:true})).status,200)
+  const state=await f.runAs(h.owner,()=>f.api.tableStaff.GET(f.request(staffPath,undefined,'GET'))),info=await state.json(),scan=info.tables[0].scan_token
+  const body={slug:'green-bistro',table:scan,nonce:randomUUID()}
+  assert.equal((await f.runAs(null,()=>f.api.tableGuest.POST(f.request('/api/public/table-access',body,'POST',{origin:'https://evil.test'})))).status,403)
+  for(const bad of [{...body,nonce:'1234'},{...body,table:h.restaurant},[],null]){
+    const r=await f.runAs(null,()=>f.api.tableGuest.POST(f.request('/api/public/table-access',bad)));assert.ok([400,404].includes(r.status))
+  }
+  const issued=await f.runAs(null,()=>f.api.tableGuest.POST(f.request('/api/public/table-access',body)));assert.equal(issued.status,200)
+  const data=await issued.json(),setCookie=issued.headers.get('set-cookie'),cookie=setCookie.split(';')[0]
+  assert.match(setCookie,/HttpOnly/i);assert.match(setCookie,/Secure/i);assert.match(setCookie,/SameSite=lax/i);assert.match(setCookie,/Path=\/api\/public/i)
+  assert.equal(issued.headers.get('cache-control'),'private, no-store');assert.equal(issued.headers.get('vary'),'Cookie');assert.equal(JSON.stringify(data).includes(cookie.split('=')[1]),false)
+  assert.match(data.code,/^[0-9]{4}$/)
+  const order={slug:'green-bistro',customerName:'Guest',items:[{dishId:h.dish,quantity:1}],idempotencyKey:randomUUID(),tableScan:scan,approved:true,code:data.code,sessionId:data.reference}
+  const orderRequest=headers=>f.request('/api/public/orders',order,'POST',headers)
+  assert.equal((await f.runAs(null,()=>f.api.publicOrders.POST(orderRequest({cookie})))).status,403)
+  assert.equal((await callStaff('approve',{session_id:data.reference,visit_id:visit.id,code:data.code},null)).status,401)
+  const found=await callStaff('find',{code:data.code});assert.equal(found.status,200);const match=await found.json()
+  assert.equal((await callStaff('approve',{...match,code:data.code,visit_id:randomUUID()})).status,409)
+  assert.equal((await callStaff('approve',{...match,code:data.code})).status,200)
+  const status=await f.runAs(null,()=>f.api.tableGuest.GET(f.request('/api/public/table-access?slug=green-bistro',undefined,'GET',{cookie})));assert.equal((await status.json()).state,'approved')
+  assert.equal((await f.runAs(null,()=>f.api.publicOrders.POST(orderRequest({})))).status,403)
+  assert.equal((await f.runAs(null,()=>f.api.publicOrders.POST(orderRequest({cookie:'wiit_table_green-bistro='+data.code})))).status,403)
+  const placed=await f.runAs(null,()=>f.api.publicOrders.POST(orderRequest({cookie})));assert.equal(placed.status,201);const original=await placed.json()
+  assert.equal((await f.runAs(null,()=>f.api.publicOrders.POST(orderRequest({cookie})))).status,200)
+  const attacker=await f.runAs(null,()=>f.api.tableGuest.POST(f.request('/api/public/table-access',body)));assert.equal(attacker.status,409);assert.equal(attacker.headers.get('set-cookie'),null)
+  const second=await f.runAs(null,()=>f.api.tableGuest.POST(f.request('/api/public/table-access',{...body,nonce:randomUUID()})));assert.equal((await second.json()).state,'pending')
+  const ip=access.tableIpHash(f.request('/api/public/table-access?slug=green-bistro',undefined,'GET'))
+  await h.db.exec('reset role');await h.db.query("update table_access_limits set count=2400,reset_at=now()+interval '1 minute' where key=$1",['guest-http:'+ip])
+  const limited=await f.runAs(null,()=>f.api.tableGuest.GET(f.request('/api/public/table-access?slug=green-bistro',undefined,'GET',{cookie,'x-forwarded-for':'203.0.113.5'})))
+  assert.equal(limited.status,429);assert.ok(Number(limited.headers.get('retry-after'))>0)
+  await h.db.exec('reset role');assert.ok((await h.db.query('select count from table_access_limits where key=$1',['guest-http:'+ip])).rows[0].count>2400)
+  await callStaff('revoke',{session_id:data.reference})
+  assert.equal((await f.runAs(null,()=>f.api.publicOrders.POST(f.request('/api/public/orders',{...order,idempotencyKey:randomUUID()},'POST',{cookie})))).status,403)
+  await h.as(h.owner);const existing=(await h.ownerAction('state')).orders;assert.equal(existing.length,1)
+  assert.equal((await h.db.query('select count(*) n from pos_visit_orders where visit_id=$1',[visit.id])).rows[0].n,1)
+  assert.ok(original.public_token)
+})

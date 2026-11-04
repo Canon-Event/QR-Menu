@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { MenuData } from '@/types'
-import { googleFontStylesheetUrl, menuDesignVariables } from '@/lib/menu-fonts'
-import MenuTier1 from '@/app/menu/[slug]/components/MenuTier1'
-import GreenBistroMenu from '@/components/menu/GreenBistroMenu'
-import ItalianMenu from '@/components/menu/ItalianMenu'
-import BloomBrunchMenu from '@/components/menu/BloomBrunchMenu'
+import MenuDocument from '@/components/menu/MenuDocument'
 
 // Use the public renderers so category changes rebuild the actual page layout.
 export default function TemplateEditorPreviewBridge({ data }: { data: MenuData }) {
@@ -23,9 +19,5 @@ export default function TemplateEditorPreviewBridge({ data }: { data: MenuData }
     return () => window.removeEventListener('message', updatePreview)
   }, [])
   const previewData: MenuData = { ...data, restaurant: { ...data.restaurant, template_settings: { ...data.restaurant.template_settings, [template]: design } } }
-  const fontUrl = googleFontStylesheetUrl(design.font)
-  return <div style={menuDesignVariables(design, template) as React.CSSProperties}>
-    {fontUrl && <link rel="stylesheet" href={fontUrl} />}
-    {template === 'B' ? <GreenBistroMenu data={previewData} /> : template === 'C' ? <ItalianMenu data={previewData} /> : template === 'D' ? <BloomBrunchMenu data={previewData} /> : <MenuTier1 data={previewData} />}
-  </div>
+  return <MenuDocument data={previewData} />
 }

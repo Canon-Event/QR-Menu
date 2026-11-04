@@ -1,0 +1,178 @@
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const { randomUUID } = require('node:crypto')
+const { posDatabase } = require('./helpers/pos-database.cjs')
+
+test('billing database: isolation, tax, immutable invoices, payments, refunds and restaurant operations', async t => {
+  const h = await posDatabase(); t.after(() => h.db.close())
+  const { db, owner, otherOwner, restaurant, otherRestaurant, dish, otherDish, as, ownerAction: act, gateway, order, settings } = h
+  const query = async (sql, args = []) => (await db.query(sql, args)).rows
+  const createBill = (extra = {}) => act('issue', { request_key: randomUUID(), items: [{ dish_id: dish, quantity: 1 }], ...extra })
+  let bill, orderId, visit, table, checkout
+  await t.test('migration is repeatable, disabled by default, and cannot be bypassed by owners or guests', async () => {
+    assert.equal((await act('state')).settings, null)
+    await assert.rejects(createBill, /Enable billing/)
+    await as(otherOwner); await assert.rejects(() => act('state'), /access denied/i)
+    await as(owner)
+    await assert.rejects(() => query('insert into pos_settings(restaurant_id) values($1)', [restaurant]), /permission denied/i)
+    await assert.rejects(() => query("select pos_gateway_action('lookup','{}')"), /permission denied/i)
+    await assert.rejects(() => query('select pos_bill_data($1)', [randomUUID()]), /permission denied/i)
+    await as(null); await assert.rejects(() => query('select * from pos_payments'), /permission denied/i)
+    await as(owner)
+  })
+  await t.test('opt-in kitchen trigger does not affect existing ordering while disabled', async () => {
+    orderId = await order(); await as(owner)
+    assert.equal((await query('select * from pos_kitchen')).length, 0)
+    await act('settings', settings)
+    orderId = await order(); await as(owner)
+    assert.equal((await query('select * from pos_kitchen where order_id=$1', [orderId])).length, 1)
+  })
+  await t.test('GSTIN checksum and outlet state are validated inside the database', async () => {
+    await assert.rejects(() => act('settings', { ...settings, tax_status: 'regular', gstin: '29ABCDE1234F1Z0' }), /GSTIN/)
+    const alpha = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', prefix = '29ABCDE1234F1Z'
+    let total = 0
+    for (let i = 0; i < prefix.length; i++) { const n = alpha.indexOf(prefix[i]) * (i % 2 ? 2 : 1); total += Math.floor(n / 36) + n % 36 }
+    settings.gstin = prefix + alpha[(36 - total % 36) % 36]; settings.tax_status = 'regular'; settings.restaurant_class = 'specified'
+    await act('settings', settings)
+    await assert.rejects(() => act('settings', { ...settings, state_code: '27' }), /matching the outlet state/)
+  })
+  await t.test('inclusive GST, discounted taxable value, exact totals and invoice retries', async () => {
+    const key = randomUUID(), payload = { request_key: key, order_ids: [orderId], discount_paise: 1180, customer_name: '<script>Guest</script>' }
+    const preview = await act('preview', payload)
+    assert.equal(preview.total_paise, 10620); assert.equal(preview.taxable_paise, 9000)
+    assert.equal(preview.cgst_paise, 810); assert.equal(preview.state_tax_paise, 810)
+    bill = await act('issue', payload)
+    assert.equal((await act('issue', payload)).id, bill.id)
+    assert.match(bill.invoice_number, /^W\/\d{4}\/\d{6}$/)
+    await assert.rejects(() => act('issue', { ...payload, request_key: randomUUID() }), /already invoiced/)
+    assert.equal((await query('select * from pos_bills')).length, 1)
+    await assert.rejects(() => query('update pos_bills set total_paise=1'), /permission denied/i)
+    assert.equal(bill.customer.name, '<script>Guest</script>')
+  })
+  await t.test('other tenants cannot see bills, use their orders or use their dishes', async () => {
+    await as(otherOwner)
+    assert.equal((await query('select * from pos_bills')).length, 0)
+    await assert.rejects(() => act('state', { bill_id: bill.id }, otherRestaurant), /Bill not found/)
+    const otherOrder = await order(otherRestaurant, otherDish); await as(owner)
+    await assert.rejects(() => createBill({ order_ids: [otherOrder] }), /unavailable/)
+    await assert.rejects(() => createBill({ items: [{ dish_id: otherDish, quantity: 1 }] }), /no longer available/)
+  })
+  await t.test('exclusive GST, composition and unregistered billing use independent saved profiles', async () => {
+    settings.price_mode = 'exclusive'; settings.restaurant_class = 'standard'
+    await act('settings', settings)
+    const exclusive = await createBill({ items: [{ dish_id: dish, quantity: 1, unit_paise: 1 }] })
+    assert.equal(exclusive.gross_paise, 11800); assert.equal(exclusive.total_paise, 12390)
+    assert.equal(exclusive.cgst_paise, 295)
+    settings.tax_status = 'composition'; await act('settings', settings)
+    assert.equal((await createBill()).cgst_paise, 0)
+    settings.tax_status = 'unregistered'; await act('settings', settings)
+    assert.equal((await createBill()).total_paise, 11800)
+    const original = await act('state', { bill_id: bill.id })
+    assert.equal(original.total_paise, 10620); assert.equal(original.rate_bps, 1800)
+    assert.equal(original.seller.tax_status, 'regular')
+  })
+  await t.test('cash is idempotent, partial payments leave a balance, and over-collection is rejected', async () => {
+    const key = randomUUID()
+    const partial = await act('cash', { bill_id: bill.id, amount_paise: 1000, request_key: key })
+    assert.equal(partial.balance_paise, 9620)
+    assert.equal((await act('cash', { bill_id: bill.id, amount_paise: 1000, request_key: key })).balance_paise, 9620)
+    await assert.rejects(() => act('cash', { bill_id: bill.id, amount_paise: 1001, request_key: key }), /already used/)
+    await assert.rejects(() => act('cash', { bill_id: bill.id, amount_paise: 9621, request_key: randomUUID() }), /outstanding/)
+  })
+  await t.test('payment attempts reuse the server amount and only the service can settle verified references', async () => {
+    const payload = { token: bill.public_token, request_key: randomUUID(), account_key_id: 'rzp_test_restaurant' }
+    checkout = await gateway('checkout', payload)
+    assert.equal(checkout.amount_paise, 9620)
+    assert.equal((await gateway('checkout', { ...payload, request_key: randomUUID() })).id, checkout.id)
+    await gateway('attach', { checkout_id: checkout.id, account_key_id: payload.account_key_id, provider_order_id: 'order_testOne' })
+    const capture = { restaurant_id: restaurant, account_key_id: payload.account_key_id, provider_order_id: 'order_testOne', provider_payment_id: 'pay_testOne', amount_paise: 9620, currency: 'INR' }
+    for (const patch of [{ amount_paise: 1 }, { currency: 'USD' }, { account_key_id: 'rzp_test_other' }]) await assert.rejects(() => gateway('capture', { ...capture, ...patch }), /does not match/)
+    assert.equal((await gateway('capture', capture)).balance_paise, 0)
+    assert.equal((await gateway('capture', capture)).paid_paise, 10620)
+    await as(owner)
+    assert.equal((await query('select * from pos_payments where bill_id=$1', [bill.id])).length, 2)
+    await assert.rejects(() => act('cash', { bill_id: bill.id, amount_paise: 1, request_key: randomUUID() }), /outstanding/)
+  })
+  await t.test('refund reservations cap the remainder and confirmed refunds create one credit note', async () => {
+    const payment = (await act('state', { bill_id: bill.id })).payments.find(p => p.method === 'razorpay')
+    const key = randomUUID(), refund = await act('refund', { payment_id: payment.id, amount_paise: 120, reason: 'Returned item', request_key: key })
+    assert.equal((await act('refund', { payment_id: payment.id, amount_paise: 120, reason: 'Returned item', request_key: key })).id, refund.id)
+    await assert.rejects(() => act('refund', { payment_id: payment.id, amount_paise: 9501, reason: 'Too much', request_key: randomUUID() }), /valid refund amount/)
+    const confirmed = { restaurant_id: restaurant, account_key_id: checkout.account_key_id, provider_payment_id: 'pay_testOne', provider_refund_id: 'rfnd_testOne', amount_paise: 120, currency: 'INR', state: 'processed', refund_id: refund.id }
+    await gateway('refund_update', confirmed); await gateway('refund_update', confirmed)
+    const result = await gateway('refund_update', { ...confirmed, state: 'pending' })
+    assert.equal(result.credits.length, 1); assert.equal(result.credited_paise, 120)
+    assert.equal(result.balance_paise, 0); assert.equal(result.total_paise, 10620)
+    assert.equal(result.refunds[0].state, 'processed')
+    await as(owner)
+  })
+  await t.test('late additional captures are recorded as overpayment; returning excess does not reduce taxable sales', async () => {
+    const another = await createBill()
+    const c = await gateway('checkout', { token: another.public_token, request_key: randomUUID(), account_key_id: 'rzp_test_restaurant' })
+    await gateway('attach', { checkout_id: c.id, account_key_id: c.account_key_id, provider_order_id: 'order_late' })
+    await as(owner); await act('cash', { bill_id: another.id, amount_paise: 11800, request_key: randomUUID() })
+    const overpaid = await gateway('capture', { restaurant_id: restaurant, account_key_id: c.account_key_id, provider_order_id: 'order_late', provider_payment_id: 'pay_late', amount_paise: 11800, currency: 'INR' })
+    assert.equal(overpaid.overpaid_paise, 11800)
+    const refunded = await gateway('refund_update', { restaurant_id: restaurant, account_key_id: c.account_key_id, provider_payment_id: 'pay_late', provider_refund_id: 'rfnd_late', amount_paise: 11800, currency: 'INR', state: 'processed' })
+    assert.equal(refunded.overpaid_paise, 0); assert.equal(refunded.credits.length, 0)
+    await as(owner)
+  })
+  await t.test('table visits enforce occupancy, assignment, transfers and settlement before release', async () => {
+    table = await act('table_create', { name: 'Table 1', seats: 4 })
+    visit = await act('visit_open', { table_id: table.id, guest_name: 'Riya' })
+    await assert.rejects(() => act('visit_open', { table_id: table.id }), /duplicate key/)
+    const nextOrder = await order(); await as(owner)
+    await act('visit_assign', { visit_id: visit.id, order_id: nextOrder })
+    await assert.rejects(() => act('visit_close', { visit_id: visit.id }), /settle this table/)
+    const table2 = await act('table_create', { name: 'Table 2', seats: 4 })
+    await act('visit_transfer', { visit_id: visit.id, table_id: table2.id })
+    const merged = await createBill({ order_ids: [nextOrder], items: [] })
+    await act('cash', { bill_id: merged.id, amount_paise: merged.total_paise, request_key: randomUUID() })
+    await assert.rejects(() => act('visit_close', { visit_id: visit.id }), /kitchen tickets/)
+    let ticket = (await query('select * from pos_kitchen where order_id=$1', [nextOrder]))[0]
+    await assert.rejects(() => act('kitchen_move', { ticket_id: ticket.id, version: 99, state: 'preparing' }), /Ticket changed/)
+    await assert.rejects(() => act('kitchen_move', { ticket_id: ticket.id, version: 0, state: 'served' }), /Invalid kitchen transition/)
+    for (const [version, state] of [[0, 'preparing'], [1, 'ready'], [2, 'served']]) await act('kitchen_move', { ticket_id: ticket.id, version, state })
+    await act('visit_close', { visit_id: visit.id })
+    assert.equal((await query('select closed_at from pos_visits where id=$1', [visit.id]))[0].closed_at !== null, true)
+  })
+  await t.test('daily totals come from payment records, cash closing is a preserved snapshot', async () => {
+    const date = (await query("select (now() at time zone 'Asia/Kolkata')::date::text d"))[0].d
+    const state = await act('state', { date })
+    assert.ok(state.report.invoice_count >= 5); assert.ok(state.report.online_paise > 0)
+    await act('close_day', { date, opening_paise: 10000, counted_paise: 35000, note: 'End of shift' })
+    const after = await act('state', { date })
+    assert.equal(after.report.closing.expected_paise, 10000 + state.report.cash_paise - state.report.cash_refunds_paise)
+    await assert.rejects(() => act('close_day', { date, opening_paise: 0, counted_paise: 0 }), /duplicate key/)
+    await assert.rejects(() => query('delete from pos_closings'), /permission denied/)
+    assert.ok((await query('select * from pos_activity')).length > 10)
+  })
+  await t.test('unpaid invoice corrections preserve the old invoice and allow its order to be billed again', async () => {
+    const originalOrder = await order(); await as(owner)
+    const wrong = await createBill({ order_ids: [originalOrder], items: [] })
+    const credited = await act('void', { bill_id: wrong.id, reason: 'Wrong customer details' })
+    assert.equal(credited.total_paise, wrong.total_paise); assert.equal(credited.credited_paise, wrong.total_paise)
+    assert.equal(credited.balance_paise, 0); assert.equal(credited.credits.length, 1)
+    assert.equal((await act('void', { bill_id: wrong.id, reason: 'Retry' })).credits.length, 1)
+    const replacement = await createBill({ order_ids: [originalOrder], items: [], customer_name: 'Correct name' })
+    assert.notEqual(replacement.invoice_number, wrong.invoice_number)
+    assert.equal((await query('select * from pos_bill_orders where order_id=$1', [originalOrder])).length, 2)
+  })
+  await t.test('cancelling an existing order withdraws its active kitchen ticket without changing money', async () => {
+    const originalOrder = await order(); await as(owner)
+    await db.query("update orders set status='cancelled' where id=$1", [originalOrder])
+    assert.equal((await query('select state from pos_kitchen where order_id=$1', [originalOrder]))[0].state, 'cancelled')
+  })
+  await t.test('a series of tiny cash refunds conserves all invoice tax and rounding exactly', async () => {
+    settings.tax_status = 'regular'; settings.price_mode = 'inclusive'; settings.restaurant_class = 'standard'; await act('settings', settings)
+    const tiny = await createBill({ discount_paise: 11789 })
+    const paid = await act('cash', { bill_id: tiny.id, amount_paise: tiny.total_paise, request_key: randomUUID() })
+    let latest
+    for (let i = 0; i < tiny.total_paise; i++) {
+      await act('refund', { payment_id: paid.payments[0].id, amount_paise: 1, reason: 'Partial return', request_key: randomUUID() })
+    }
+    latest = await act('state', { bill_id: tiny.id })
+    for (const key of ['taxable_paise','cgst_paise','state_tax_paise','rounding_paise']) assert.equal(latest.credits.reduce((sum, c) => sum + c[key], 0), tiny[key])
+    assert.equal(latest.balance_paise, 0); assert.equal(latest.paid_paise, 0)
+  })
+})

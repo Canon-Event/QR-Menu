@@ -4,8 +4,9 @@ import EmployeePortalLink from '@/components/dashboard/EmployeePortalLink'
 import DepartmentOutletManager from '@/components/dashboard/DepartmentOutletManager'
 import AttendanceReport from '@/components/dashboard/AttendanceReport'
 import LeaveBalances from '@/components/dashboard/LeaveBalances'
-import EmployeeMobileMenu from '@/components/dashboard/EmployeeMobileMenu'
 import PayrollCostCard from '@/components/dashboard/PayrollCostCard'
+import EmployeeWorkspaceProvider from '@/components/dashboard/EmployeeWorkspaceTabs'
+import { createEmployeeDemoData } from '@/lib/employee-demo-data'
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient()
@@ -25,15 +26,19 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
       }))
     }
   }
+  const balancesEmployees = employees.length
+    ? employees
+    : createEmployeeDemoData(new Date().toISOString().slice(0, 10)).employees.map(({ id, full_name, employee_code }) => ({ id, full_name, employee_code }))
 
-  return <div className="employee-route-shell">
-    {leaveUrl && <EmployeePortalLink href={leaveUrl} />}
-    {children}
-    <DepartmentOutletManager />
-    <AttendanceReport />
-    <LeaveBalances employees={employees} />
-    <EmployeeMobileMenu />
-    <PayrollCostCard />
-    <EmployeePhotoManager employees={employees} />
-  </div>
+  return <EmployeeWorkspaceProvider>
+    <div className="employee-route-shell">
+      {leaveUrl && <EmployeePortalLink href={leaveUrl} />}
+      {children}
+      <DepartmentOutletManager />
+      <AttendanceReport />
+      <LeaveBalances employees={balancesEmployees} />
+      <PayrollCostCard />
+      <EmployeePhotoManager employees={employees} />
+    </div>
+  </EmployeeWorkspaceProvider>
 }

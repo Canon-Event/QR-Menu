@@ -6,12 +6,14 @@ import MenuTier2 from './components/MenuTier2'
 import MenuTier3 from './components/MenuTier3'
 import CustomerMenuActions from '@/components/menu/CustomerMenuActions'
 import { googleFontStylesheetUrl, menuDesignVariables } from '@/lib/menu-fonts'
-import GreenBistroMenu from '@/components/menu/GreenBistroMenu'
-import ItalianMenu from '@/components/menu/ItalianMenu'
-import BloomBrunchMenu from '@/components/menu/BloomBrunchMenu'
+import MenuDocument from '@/components/menu/MenuDocument'
+import BasicMenu from '@/components/menu/BasicMenu'
+import CustomerRewards from '@/components/loyalty/CustomerRewards'
+import type { LoyaltyProgram } from '@/lib/loyalty'
 
 interface Props {
   params: Promise<{ slug: string }>
+  searchParams?: Promise<{ table?: string }>
 }
 
 async function getMenuData(slug: string): Promise<MenuData | null> {
@@ -52,16 +54,19 @@ async function getMenuData(slug: string): Promise<MenuData | null> {
   }
 }
 
-export default async function MenuPage({ params }: Props) {
+export default async function MenuPage({ params, searchParams }: Props) {
   const data = await getMenuData((await params).slug)
   if (!data) notFound()
 
   const { restaurant } = data
+  const loyaltyClient = await createSupabaseServerClient()
+  const { data: loyaltyProgram } = await loyaltyClient.from('loyalty_programs').select('*').eq('restaurant_id', restaurant.id).maybeSingle()
   const design = restaurant.template_settings?.[restaurant.template] || {}
 
-  const menu = restaurant.template === 'A' ? <MenuTier1 data={data} /> : restaurant.template === 'B' ? <GreenBistroMenu data={data} /> : restaurant.template === 'C' ? <ItalianMenu data={data} /> : restaurant.template === 'D' ? <BloomBrunchMenu data={data} /> : restaurant.tier === 3 ? <MenuTier3 data={data} /> : restaurant.tier === 2 ? <MenuTier2 data={data} /> : <MenuTier1 data={data} />
+  const menu = restaurant.menu_presentation === 'basic' ? <BasicMenu data={data} /> : ['A', 'B', 'C', 'D'].includes(restaurant.template) ? <MenuDocument data={data} /> : restaurant.tier === 3 ? <MenuTier3 data={data} /> : restaurant.tier === 2 ? <MenuTier2 data={data} /> : <MenuTier1 data={data} />
   const fontStylesheet = googleFontStylesheetUrl(design.font)
-  return <div className={`menu-theme menu-theme-${restaurant.template.toLowerCase()}`} style={menuDesignVariables(design, restaurant.template) as React.CSSProperties}>{fontStylesheet && <link rel="stylesheet" href={fontStylesheet} />}{menu}<CustomerMenuActions restaurant={restaurant} dishes={data.dishes} /></div>
+  const tableScan = (await searchParams)?.table || null
+  return <div className={`menu-theme menu-theme-${restaurant.template.toLowerCase()}`} style={menuDesignVariables(design, restaurant.template) as React.CSSProperties}>{fontStylesheet && <link rel="stylesheet" href={fontStylesheet} />}{loyaltyProgram && (loyaltyProgram.enabled || loyaltyProgram.launched_at) && <CustomerRewards restaurant={restaurant} initialProgram={loyaltyProgram as LoyaltyProgram} />}{menu}<CustomerMenuActions restaurant={restaurant} dishes={data.dishes} tableScan={tableScan} /></div>
 }
 
 export async function generateMetadata({ params }: Props) {

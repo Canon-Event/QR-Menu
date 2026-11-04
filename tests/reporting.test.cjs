@@ -1,0 +1,28 @@
+﻿const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto')
+const {posDatabase}=require('./helpers/pos-database.cjs')
+const {loadTypeScript}=require('./helpers/load-typescript.cjs')
+test('unavailable payment reporting is distinct from zero receipts',async()=>{
+  const {financialSummary}=loadTypeScript('lib/reporting.ts')
+  assert.deepEqual(await financialSummary({rpc:async()=>({error:{code:'PGRST202'}})},randomUUID()),{summary:null,unavailable:true})
+})
+test('reports use financial records, with partial payments, refunds, periods and tenant isolation',async t=>{
+  const h=await posDatabase();t.after(()=>h.db.close())
+  await h.ownerAction('settings',h.settings)
+  const report=async(start=null,end=null)=>(await h.db.query('select restaurant_financial_report($1,$2,$3) result',[h.restaurant,start,end])).rows[0].result
+  await h.order();await h.as(h.owner)
+  assert.equal((await report()).net_collected_paise,0)
+  const bill=await h.ownerAction('issue',{request_key:randomUUID(),items:[{dish_id:h.dish,quantity:1}]})
+  assert.equal((await report()).invoiced_paise,11800);assert.equal((await report()).net_collected_paise,0)
+  const paid=await h.ownerAction('cash',{bill_id:bill.id,amount_paise:5000,request_key:randomUUID()})
+  assert.equal((await report()).outstanding_paise,6800)
+  await h.ownerAction('refund',{payment_id:paid.payments[0].id,amount_paise:1000,reason:'Partial return',request_key:randomUUID()})
+  let r=await report();assert.equal(r.collected_paise,5000);assert.equal(r.refunded_paise,1000);assert.equal(r.net_collected_paise,4000);assert.equal(r.net_invoiced_paise,10800);assert.equal(r.outstanding_paise,6800)
+  await h.ownerAction('cash',{bill_id:bill.id,amount_paise:6800,request_key:randomUUID()})
+  r=await report();assert.equal(r.net_collected_paise,10800);assert.equal(r.outstanding_paise,0)
+  await h.db.exec('reset role');await h.db.query("update pos_payments set created_at='2025-01-01T00:00:00Z' where id=$1",[paid.payments[0].id]);await h.as(h.owner)
+  r=await report('2026-01-01T00:00:00Z');assert.equal(r.collected_paise,6800);assert.equal(r.net_collected_paise,5800)
+  await assert.rejects(()=>report('2026-02-01','2026-01-01'),/Invalid report period/)
+  await h.as(h.otherOwner);await assert.rejects(()=>report(),/access denied/)
+  await h.as(null);await assert.rejects(()=>report(),/permission denied/)
+})
+

@@ -1,0 +1,20 @@
+import { money, stateTaxLabel, type Bill } from '@/lib/pos'
+import BillQr from './BillQr'
+
+export type ReceiptBill = Pick<Bill, 'invoice_number' | 'issued_at' | 'customer' | 'lines' | 'price_mode' | 'tax_status' | 'rate_bps' | 'gross_paise' | 'discount_paise' | 'taxable_paise' | 'cgst_paise' | 'state_tax_paise' | 'rounding_paise' | 'total_paise' | 'paid_paise' | 'credited_paise' | 'balance_paise' | 'overpaid_paise' | 'credits'> & {
+  seller: Pick<Bill['seller'], 'legal_name' | 'address' | 'gstin' | 'state_code' | 'sac'>
+}
+export default function Receipt({ bill, token }: { bill: ReceiptBill; token?: string }) {
+  const registered = bill.tax_status === 'regular'
+  return <article className="pos-receipt">
+    <header><p className="pos-eyebrow">{registered ? 'Tax invoice' : bill.tax_status === 'composition' ? 'Bill of supply' : 'Bill'}</p><h2>{bill.seller.legal_name}</h2><p className="pos-preserve">{bill.seller.address}</p>{bill.seller.gstin && <p>GSTIN: {bill.seller.gstin}</p>}<div className="pos-receipt-meta"><b>{bill.invoice_number}</b><span>{new Date(bill.issued_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</span></div></header>
+    <div className="pos-recipient"><b>{bill.customer.name}</b>{bill.customer.address && <p className="pos-preserve">{bill.customer.address}</p>}{bill.customer.gstin && <p>GSTIN: {bill.customer.gstin}</p>}{registered && <small>Place of supply: state {bill.seller.state_code} · SAC {bill.seller.sac}</small>}</div>
+    <table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>{bill.lines.map((line, index) => <tr key={index}><td>{line.name}</td><td>{line.quantity}</td><td>{money(line.unit_paise)}</td><td>{money(Number(line.unit_paise) * line.quantity)}</td></tr>)}</tbody></table>
+    <dl className="pos-receipt-totals"><div><dt>Items total {registered && bill.price_mode === 'inclusive' ? '(incl. GST)' : ''}</dt><dd>{money(bill.gross_paise)}</dd></div>{Number(bill.discount_paise) > 0 && <div><dt>Discount</dt><dd>−{money(bill.discount_paise)}</dd></div>}<div><dt>{registered ? 'Taxable value' : 'Value after discount'}</dt><dd>{money(bill.taxable_paise)}</dd></div>{registered && <><div><dt>CGST ({bill.rate_bps / 200}%)</dt><dd>{money(bill.cgst_paise)}</dd></div><div><dt>{stateTaxLabel(bill.seller.state_code)} ({bill.rate_bps / 200}%)</dt><dd>{money(bill.state_tax_paise)}</dd></div></>}{Number(bill.rounding_paise) !== 0 && <div><dt>Rounding</dt><dd>{money(bill.rounding_paise)}</dd></div>}<div className="pos-total"><dt>Invoice total</dt><dd>{money(bill.total_paise)}</dd></div>{Number(bill.credited_paise) > 0 && <div><dt>Credit notes</dt><dd>−{money(bill.credited_paise)}</dd></div>}<div><dt>Net payments received</dt><dd>{money(bill.paid_paise)}</dd></div><div className="pos-total"><dt>Amount due</dt><dd>{money(bill.balance_paise)}</dd></div>{Number(bill.overpaid_paise) > 0 && <div><dt>Overpayment to refund</dt><dd>{money(bill.overpaid_paise)}</dd></div>}</dl>
+    {bill.tax_status === 'composition' && <p className="pos-small">Composition taxable person, not eligible to collect tax on supplies.</p>}
+    {bill.customer.note && <p className="pos-preserve pos-small">{bill.customer.note}</p>}
+    {bill.credits.map(credit => <section className="pos-credit" key={credit.credit_number}><b>Credit note {credit.credit_number}</b><p>Against {bill.invoice_number} · {new Date(credit.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</p><p>{credit.reason}</p><dl><div><dt>Value</dt><dd>{money(credit.taxable_paise)}</dd></div>{registered && <><div><dt>CGST</dt><dd>{money(credit.cgst_paise)}</dd></div><div><dt>{stateTaxLabel(bill.seller.state_code)}</dt><dd>{money(credit.state_tax_paise)}</dd></div></>}{Number(credit.rounding_paise) !== 0 && <div><dt>Rounding</dt><dd>{money(credit.rounding_paise)}</dd></div>}<div><dt>Credit total</dt><dd>{money(credit.amount_paise)}</dd></div></dl></section>)}
+    {token && <BillQr token={token} />}
+    <footer>Thank you for dining with us.</footer>
+  </article>
+}

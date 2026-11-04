@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
+import { detachNotificationPush } from '@/lib/notification-push-client'
 
 interface Props {
   displayName: string
@@ -35,6 +36,7 @@ export default function DashboardIdentity({ displayName, restaurantName }: Props
   const initials = displayName.slice(0, 2).toUpperCase()
 
   async function signOut() {
+    await detachNotificationPush()
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()

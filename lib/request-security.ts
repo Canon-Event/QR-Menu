@@ -41,7 +41,7 @@ export function clientIp(request: Request) {
 }
 
 /** Bound actual streamed bytes, including requests without Content-Length. */
-export async function readJsonBody(request: Request): Promise<Record<string, any> | null> {
+export async function readJsonBody(request: Request, maxBytes = 32_000): Promise<Record<string, any> | null> {
   const reader = request.body?.getReader()
   if (!reader) return null
   const chunks: Uint8Array[] = []
@@ -51,7 +51,7 @@ export async function readJsonBody(request: Request): Promise<Record<string, any
       const { done, value } = await reader.read()
       if (done) break
       size += value.byteLength
-      if (size > 32_000) {
+      if (size > maxBytes) {
         await reader.cancel()
         return null
       }

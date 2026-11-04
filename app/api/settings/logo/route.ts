@@ -4,6 +4,14 @@ import { getOwnedRestaurant, rejectUnsafeRequest } from '@/lib/menu-api'
 
 const allowed = new Map([['image/jpeg','jpg'],['image/png','png'],['image/webp','webp']])
 
+export async function DELETE(request: Request) {
+  const unsafe=rejectUnsafeRequest(request);if(unsafe)return unsafe
+  const auth=await getOwnedRestaurant();if('error' in auth)return auth.error
+  const {error}=await auth.supabase.from('restaurants').update({logo_url:null}).eq('id',auth.restaurantId)
+  if(error)return NextResponse.json({error:'Could not remove the logo. Please try again.'},{status:503})
+  return NextResponse.json({logoUrl:null})
+}
+
 export async function POST(request: Request) {
   const unsafe = rejectUnsafeRequest(request, true); if (unsafe) return unsafe
   const auth = await getOwnedRestaurant(); if ('error' in auth) return auth.error

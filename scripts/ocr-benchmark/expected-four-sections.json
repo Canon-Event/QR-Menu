@@ -1,0 +1,31 @@
+{
+  "description": "User-supplied black/orange two-column menu; centered and right-aligned headings",
+  "headings": ["SIDES", "DRINKS", "DESSERT", "ENTREES"],
+  "rows": [
+    {"category":"SIDES","name":"French Fries with Aioli","price":3.5},
+    {"category":"SIDES","name":"Sweet Potato Fries","price":4.5},
+    {"category":"SIDES","name":"Collard Greens","price":3.5},
+    {"category":"SIDES","name":"Chipotle Mashed Potatoes","price":4.5},
+    {"category":"SIDES","name":"Twice Baked Beans","price":1.5},
+    {"category":"SIDES","name":"Pesto Pasta Salad","price":1.5},
+    {"category":"SIDES","name":"House Baked Roll","price":2.5},
+    {"category":"DRINKS","name":"Soda Water","price":1.5},
+    {"category":"DRINKS","name":"Bottled Mineral Water","price":2.5},
+    {"category":"DRINKS","name":"Flavoured milk","price":1.5},
+    {"category":"DRINKS","name":"Fresh Juice","price":3.5},
+    {"category":"DRINKS","name":"Organic Tea","price":1.5},
+    {"category":"DRINKS","name":"Premium Loose-Leaf Tea","price":1.5},
+    {"category":"DESSERT","name":"Tiramisu","price":5.5},
+    {"category":"DESSERT","name":"Cheesecake with Berries","price":5.5},
+    {"category":"DESSERT","name":"Crème Caramel","price":5},
+    {"category":"DESSERT","name":"Blackberry Pie","price":4.5},
+    {"category":"DESSERT","name":"Red Velvet Cake","price":4.5},
+    {"category":"ENTREES","name":"French Fries with Aioli","price":3.5},
+    {"category":"ENTREES","name":"Sweet Potato Fries","price":4.5},
+    {"category":"ENTREES","name":"Collard Greens","price":3.5},
+    {"category":"ENTREES","name":"Chipotle Mashed Potatoes","price":4.5},
+    {"category":"ENTREES","name":"Twice Baked Beans","price":1.5},
+    {"category":"ENTREES","name":"Pesto Pasta Salad","price":1.5},
+    {"category":"ENTREES","name":"House Baked Roll","price":2.5}
+  ]
+}

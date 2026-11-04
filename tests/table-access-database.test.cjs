@@ -1,0 +1,196 @@
+const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs')
+const {randomUUID,randomBytes} = require('node:crypto')
+const {posDatabase} = require('./helpers/pos-database.cjs')
+const hash = () => randomBytes(32).toString('hex')
+
+test('table approval: isolation, session proof, expiry, concurrency, budgets, order atomicity and closing', async t => {
+  const h = await posDatabase(); t.after(() => h.db.close())
+  const ip = hash(), firstHash = hash(), secondHash = hash()
+  const guest = async (action='issue', token=firstHash, old=null, scan=table.scan_token, address=ip) => {
+    await h.as(null,'service_role')
+    return (await h.db.query('select table_access_guest($1,$2,$3,$4,$5,$6) result',['green-bistro',action,scan,old,token,address])).rows[0].result
+  }
+  const staff = async (action,data={},actor=h.owner,r=h.restaurant) => {
+    await h.as(actor)
+    return (await h.db.query('select table_access_staff($1,$2,$3::jsonb) result',[r,action,JSON.stringify(data)])).rows[0].result
+  }
+  const submit = async (token=firstHash,key=randomUUID(),dish=h.dish,qty=1,scan=null) => {
+    await h.as(null,'service_role')
+    return (await h.db.query('select orders_submit_table($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9) result',['green-bistro',key,'Guest','','',JSON.stringify([{dishId:dish,quantity:qty}]),token,ip,scan])).rows[0].result
+  }
+  const approve = async (g,actor=h.owner) => { const found=await staff('find',{code:g.code},actor); assert.ok(found.session_id,JSON.stringify(found)); return staff('approve',{...found,code:g.code},actor) }
+  await h.db.exec('reset role'); await h.db.query("update restaurants set menu_mode='ordering' where id=$1",[h.restaurant]); await h.as(h.owner); await h.ownerAction('settings',h.settings)
+  const table = await h.ownerAction('table_create',{name:'Table 1',seats:4}), otherTable=await h.ownerAction('table_create',{name:'Table 2',seats:2})
+  for(const row of [table,otherTable])Object.assign(row,(await h.db.query('select scan_token from pos_tables where id=$1',[row.id])).rows[0])
+  let visit, first, second, firstOrderKey=randomUUID()
+
+  await t.test('default opt-out preserves legacy orders; owner alone can enable verification', async()=>{
+    assert.ok((await submit(null)).public_token)
+    await assert.rejects(()=>staff('settings',{enabled:true},h.otherOwner),/access denied/)
+    assert.equal((await staff('settings',{enabled:true})).saved,true)
+    assert.equal((await staff('state')).enabled,true)
+  })
+  await t.test('unique four digits; scan retries and reloads reuse one pending session', async()=>{
+    first=await guest(); assert.match(first.code,/^[1-9][0-9]{3}$/); assert.equal(first.state,'pending'); assert.ok(first.reference)
+    assert.equal((await guest()).reference,first.reference)
+    assert.equal((await guest('issue',hash(),firstHash)).reference,first.reference)
+    await h.as(null,'service_role')
+    const same=hash(),args=['green-bistro','issue',table.scan_token,null,same,hash()]
+    const [a,b]=await Promise.all([h.db.query('select table_access_guest($1,$2,$3,$4,$5,$6) result',args),h.db.query('select table_access_guest($1,$2,$3,$4,$5,$6) result',args)])
+    assert.equal(a.rows[0].result.reference,b.rows[0].result.reference)
+    second=await guest('issue',secondHash); assert.notEqual(second.code,first.code)
+    assert.equal(JSON.stringify(first).includes(firstHash),false)
+  })
+  await t.test('unknown QR and unapproved/fabricated phones cannot place orders or bypass the old RPC', async()=>{
+    assert.equal((await guest('issue',hash(),null,randomUUID())).http_status,404)
+    for(const token of [null,hash(),firstHash])assert.equal((await submit(token)).http_status,403)
+    await h.as(null,'service_role');await assert.rejects(()=>h.db.query("select orders_submit('green-bistro',$1,'Guest','','',$2::jsonb)",[randomUUID(),JSON.stringify([{dishId:h.dish,quantity:1}])]),/waiter/)
+    await h.as(null);await assert.rejects(()=>h.db.query("select orders_submit_table('green-bistro',$1,'Guest','','','[]',null,$2)",[randomUUID(),ip]),/permission denied/)
+    await assert.rejects(()=>h.db.query('select * from table_guest_sessions'),/permission denied/)
+  })
+  await t.test('staff must seat the table and confirm its current visit before approval', async()=>{
+    const found=await staff('find',{code:first.code});assert.equal(found.visit_id,null)
+    assert.equal((await staff('approve',{...found,code:first.code,visit_id:randomUUID()})).http_status,409)
+    await h.as(h.owner); visit=await h.ownerAction('visit_open',{table_id:table.id,guest_name:'Dinner'})
+    const otherVisit=await h.ownerAction('visit_open',{table_id:otherTable.id,guest_name:'Other guests'})
+    assert.equal((await staff('approve',{...found,code:first.code,visit_id:otherVisit.id})).http_status,409)
+    assert.equal((await approve(first)).approved,true)
+    assert.equal((await approve(first)).approved,true)
+    await h.db.exec('reset role');const events=await h.db.query("select * from table_access_events where action='phone.approved'");assert.equal(events.rows.length,1)
+  })
+  await t.test('approval belongs to the cookie proof, never just the displayed code or bootstrap nonce', async()=>{
+    assert.equal((await guest('status',null,firstHash)).state,'approved')
+    assert.equal((await guest('status',null,secondHash)).state,'pending')
+    assert.equal((await guest('issue',firstHash,null)).http_status,409)
+    assert.equal((await submit(secondHash)).http_status,403)
+    assert.equal((await submit(firstHash,randomUUID(),h.dish,1,otherTable.scan_token)).http_status,403)
+    const publicState=await guest('status',null,firstHash); assert.equal(publicState.code,null)
+    await h.as(h.owner);const text=JSON.stringify(await staff('state'));assert.equal(text.includes('token_hash'),false);assert.equal(text.includes('code_expires_at'),false)
+  })
+  await t.test('approved orders use database prices once and automatically join the table visit', async()=>{
+    const result=await submit(firstHash,firstOrderKey);assert.ok(result.public_token)
+    assert.equal((await submit(firstHash,firstOrderKey)).public_token,result.public_token)
+    await h.as(h.owner);const rows=await h.db.query('select o.*,v.visit_id from orders o join pos_visit_orders v on v.order_id=o.id where o.idempotency_key=$1',[firstOrderKey]);assert.equal(rows.rows.length,1);assert.equal(rows.rows[0].visit_id,visit.id);assert.equal(Number(rows.rows[0].total),118)
+    assert.equal((await h.db.query('select * from pos_kitchen where order_id=$1',[rows.rows[0].id])).rows.length,1)
+    assert.equal((await approve(second)).approved,true)
+    assert.equal((await submit(secondHash,firstOrderKey)).http_status,409)
+    assert.ok((await submit(secondHash)).public_token)
+  })
+  await t.test('failed order writes roll back order/items/tickets/links but retain the phone attempt budget', async()=>{
+    const token=hash(),g=await guest('issue',token);await approve(g)
+    assert.equal((await submit(token,randomUUID(),h.otherDish)).http_status,409)
+    await h.db.exec("reset role; create function table_test_fail() returns trigger language plpgsql as $$ begin raise exception 'Injected item failure'; end $$; create trigger table_test_fail before insert on order_items for each row execute function table_test_fail();")
+    const key=randomUUID();assert.equal((await submit(token,key)).http_status,503)
+    await h.db.exec('reset role; drop trigger table_test_fail on order_items; drop function table_test_fail();')
+    assert.equal((await h.db.query('select * from orders where idempotency_key=$1',[key])).rows.length,0)
+    assert.equal(Number((await h.db.query('select count from table_access_limits where key=$1',['order-phone:'+g.reference])).rows[0].count),2)
+    assert.ok((await submit(token,key)).public_token)
+    for(let i=0;i<3;i++)await submit(token,randomUUID(),h.otherDish)
+    assert.equal((await submit(token)).http_status,429)
+  })
+  await t.test('a four-digit guessing attack is locked per staff account across requests', async()=>{
+    const actor=randomUUID();await h.db.exec('reset role');await h.db.query("insert into auth.users(id,email,email_confirmed_at) values($1,'waiter@access.test',now())",[actor])
+    await h.as(h.owner);await h.db.query("select team_admin($1,'grant',$2::jsonb)",[h.restaurant,JSON.stringify({email:'waiter@access.test',name:'Waiter',role:'waiter'})])
+    for(let i=0;i<8;i++)assert.equal((await staff('find',{code:'0000'},actor)).http_status,404)
+    assert.equal((await staff('find',{code:'0000'},actor)).http_status,429)
+    assert.equal((await staff('find',{code:first.code},actor)).http_status,429)
+    await h.db.exec('reset role');await h.db.query("update table_access_limits set reset_at=now()-interval '1 second' where key=$1",['staff-miss:'+h.restaurant+actor])
+    assert.ok((await staff('find',{code:first.code},actor)).session_id)
+    await h.as(h.owner);await h.db.query("select team_admin($1,'revoke',$2::jsonb)",[h.restaurant,JSON.stringify({user_id:actor})])
+    await assert.rejects(()=>staff('find',{code:first.code},actor),/access denied/)
+  })
+  await t.test('approved sessions expire and a new table scan revokes the previous table’s access', async()=>{
+    const token=hash(),g=await guest('issue',token,null,otherTable.scan_token);await approve(g)
+    await h.db.exec('reset role');await h.db.query("update table_guest_sessions set expires_at=now()-interval '1 second' where id=$1",[g.reference])
+    assert.equal((await guest('status',null,token)).state,'expired');assert.equal((await submit(token)).http_status,403)
+    const nextToken=hash(),next=await guest('issue',nextToken,null,otherTable.scan_token);await approve(next)
+    const moved=await guest('issue',hash(),nextToken,table.scan_token);assert.equal(moved.state,'pending');assert.equal((await guest('status',null,nextToken)).state,'revoked')
+  })
+  await t.test('kitchen users cannot approve phones and authenticated users cannot mint session proof directly', async()=>{
+    const actor=randomUUID();await h.db.exec('reset role');await h.db.query("insert into auth.users(id,email,email_confirmed_at) values($1,'kitchen@access.test',now())",[actor])
+    await h.as(h.owner);await h.db.query("select team_admin($1,'grant',$2::jsonb)",[h.restaurant,JSON.stringify({email:'kitchen@access.test',name:'Kitchen',role:'kitchen'})])
+    await assert.rejects(()=>staff('find',{code:first.code},actor),/access denied/)
+    await assert.rejects(()=>staff('state',{},actor),/access denied/)
+    await h.as(h.owner);await assert.rejects(()=>h.db.query("select table_access_guest('green-bistro','issue',$1,null,$2,$3)",[table.scan_token,hash(),ip]),/permission denied/)
+  })
+  await t.test('hourly phone and per-table order limits persist independently of the browser/server instance', async()=>{
+    const token=hash(),g=await guest('issue',token,null,otherTable.scan_token);await approve(g)
+    await h.db.exec('reset role');const vid=(await h.db.query('select visit_id from table_guest_sessions where id=$1',[g.reference])).rows[0].visit_id
+    await h.db.query("insert into table_access_limits(key,count,reset_at) values($1,30,now()+interval '1 hour')",['order-hour:'+g.reference])
+    assert.equal((await submit(token)).http_status,429)
+    await h.db.exec('reset role');await h.db.query('update table_access_limits set count=0 where key=$1',['order-hour:'+g.reference])
+    await h.db.query("insert into table_access_limits(key,count,reset_at) values($1,20,now()+interval '1 minute')",['order-table:'+vid])
+    assert.equal((await submit(token)).http_status,429)
+    await h.db.exec('reset role');assert.equal((await h.db.query('select count from table_access_limits where key=$1',['order-table:'+vid])).rows[0].count,21)
+  })
+  await t.test('IP issuance limits cannot be bypassed with fresh nonces or other table QR codes', async()=>{
+    const address=hash();await h.db.exec('reset role');await h.db.query("insert into table_access_limits(key,count,reset_at) values($1,200,now()+interval '10 minutes')",['scan-ip:'+address])
+    assert.equal((await guest('issue',hash(),null,table.scan_token,address)).http_status,429)
+    assert.equal((await guest('issue',hash(),null,otherTable.scan_token,address)).http_status,429)
+  })
+  await t.test('expired codes cannot be approved; a new scan nonce is required to renew', async()=>{
+    const token=hash(),g=await guest('issue',token)
+    await h.db.exec('reset role');await h.db.query("update table_guest_sessions set code_expires_at=now()-interval '1 second' where id=$1",[g.reference])
+    assert.equal((await staff('find',{code:g.code})).http_status,404)
+    assert.equal((await guest('status',null,token)).state,'expired')
+    assert.equal((await guest('issue',token)).http_status,410)
+    const renewed=await guest('issue',hash());assert.equal(renewed.state,'pending');assert.notEqual(renewed.code,g.code)
+  })
+  await t.test('moving a visit revokes both pending codes and approved phones from the old table', async()=>{
+    const token=hash(),g=await guest('issue',token,null,otherTable.scan_token);await approve(g)
+    const waitingToken=hash(),waiting=await guest('issue',waitingToken,null,otherTable.scan_token)
+    await h.db.exec('reset role');const vid=(await h.db.query('select visit_id from table_guest_sessions where id=$1',[g.reference])).rows[0].visit_id
+    await h.as(h.owner);const destination=await h.ownerAction('table_create',{name:'Moved table',seats:4});await h.ownerAction('visit_transfer',{visit_id:vid,table_id:destination.id})
+    assert.equal((await guest('status',null,token)).state,'revoked');assert.equal((await guest('status',null,waitingToken)).state,'revoked')
+    assert.equal((await submit(token)).http_status,403);assert.equal((await staff('find',{code:waiting.code})).http_status,404)
+  })
+  await t.test('new nonces cannot evade shared table issuance limits; expiry restores the budget', async()=>{
+    await h.db.exec('reset role');await h.db.query("update table_access_limits set count=12,reset_at=now()+interval '5 minutes' where key=$1",['scan-table:'+table.id])
+    const limited=await guest('issue',hash(),null,table.scan_token,hash());assert.equal(limited.http_status,429);assert.ok(limited.retry_after>0)
+    await h.db.exec('reset role');await h.db.query("update table_access_limits set reset_at=now()-interval '1 second' where key=$1",['scan-table:'+table.id])
+    assert.equal((await guest('issue',hash())).state,'pending')
+  })
+  await t.test('polling and IP budgets apply in PostgreSQL, including wrong or missing session cookies', async()=>{
+    const address=hash();await h.db.exec('reset role');await h.db.query("insert into table_access_limits(key,count,reset_at) values($1,2400,now()+interval '1 minute')",['guest-http:'+address])
+    assert.equal((await guest('status',null,null,null,address)).http_status,429)
+    const unknown=hash();await h.db.exec('reset role');await h.db.query("insert into table_access_limits(key,count,reset_at) values($1,24,now()+interval '1 minute')",['poll:'+unknown])
+    assert.equal((await guest('status',null,unknown)).http_status,429)
+  })
+  await t.test('revoke one phone immediately without revoking other phones at the table', async()=>{
+    assert.equal((await staff('revoke',{session_id:second.reference})).revoked,true)
+    assert.equal((await guest('status',null,secondHash)).state,'revoked');assert.equal((await submit(secondHash)).http_status,403)
+    assert.equal((await guest('status',null,firstHash)).state,'approved')
+  })
+  await t.test('issued bills freeze new additions; legitimate retries still return the original order', async()=>{
+    await h.as(h.owner);const state=await h.ownerAction('state'),ids=state.orders.filter(o=>o.visit_id===visit.id).map(o=>o.id)
+    const bill=await h.ownerAction('issue',{order_ids:ids,request_key:randomUUID()});assert.ok(bill.id)
+    assert.equal((await submit(firstHash)).http_status,409)
+    // Earlier tests used the initial phone budget; reset only its test clock.
+    await h.db.exec('reset role');await h.db.query("update table_access_limits set reset_at=now()-interval '1 second' where key=$1",['order-phone:'+first.reference])
+    assert.ok((await submit(firstHash,firstOrderKey)).public_token)
+    await h.as(h.owner);await assert.rejects(()=>h.ownerAction('visit_close',{visit_id:visit.id}),/settle/)
+    assert.equal((await guest('status',null,firstHash)).state,'approved')
+    await h.as(h.owner);await h.ownerAction('cash',{bill_id:bill.id,amount_paise:Number(bill.balance_paise),request_key:randomUUID()})
+    for(const ticket of (await h.ownerAction('state')).kitchen){let version=ticket.version;for(const state of ['preparing','ready','served'])await h.ownerAction('kitchen_move',{ticket_id:ticket.id,version:version++,state})}
+    const pendingToken=hash(),pending=await guest('issue',pendingToken)
+    await h.as(h.owner);await h.ownerAction('visit_close',{visit_id:visit.id})
+    assert.equal((await guest('status',null,pendingToken)).state,'revoked')
+    assert.equal((await staff('find',{code:pending.code})).http_status,404)
+  })
+  await t.test('closing/reopening the same table never carries the old party’s permission forward', async()=>{
+    assert.equal((await guest('status',null,firstHash)).state,'revoked');assert.equal((await submit(firstHash)).http_status,403)
+    await h.as(h.owner);const next=await h.ownerAction('visit_open',{table_id:table.id,guest_name:'New party'});assert.notEqual(next.id,visit.id)
+    assert.equal((await staff('find',{code:first.code})).http_status,404)
+    const token=hash(),g=await guest('issue',token);await approve(g);assert.ok((await submit(token)).public_token)
+  })
+  await t.test('private tables/helpers are not exposed; disabling and re-enabling revokes previous access', async()=>{
+    await h.as(h.owner);for(const name of ['table_guest_sessions','table_guest_orders','table_access_limits','table_access_events'])await assert.rejects(()=>h.db.query(`select * from ${name}`),/permission denied/)
+    await assert.rejects(()=>h.db.query("select table_access_take('forged',1,1)"),/permission denied/)
+    assert.equal((await staff('settings',{enabled:false})).saved,true);assert.ok((await submit(null)).public_token)
+    assert.equal((await staff('settings',{enabled:true})).saved,true);assert.equal((await submit(firstHash)).http_status,403)
+    await h.db.exec('reset role');await h.db.exec(fs.readFileSync('supabase/phase-order-reliability.sql','utf8'))
+    await h.as(null,'service_role');await assert.rejects(()=>h.db.query("select orders_submit('green-bistro',$1,'Guest','','',$2::jsonb)",[randomUUID(),JSON.stringify([{dishId:h.dish,quantity:1}])]),/waiter/)
+    await h.db.exec('reset role');await h.db.exec(fs.readFileSync('supabase/phase-staff-permissions.sql','utf8'));await h.db.exec(fs.readFileSync('supabase/phase-table-access.sql','utf8'));await h.db.exec(fs.readFileSync('supabase/phase-table-access.sql','utf8'))
+    assert.equal((await staff('state')).enabled,true)
+  })
+})

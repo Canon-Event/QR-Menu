@@ -19,7 +19,7 @@ export default function CategoryArtworkControls({ categories, uncategorizedCount
     onChange({ ...value, [id]: { ...value[id], ...changes } })
   }
   return <section className="category-artwork-controls">
-    <header><b>Categories & artwork</b><small>Match each category to its food type. It keeps the same artwork and page style when your menu grows or changes order.</small></header>
+    <header><b>Categories & artwork</b><small>Choose a food type for each category. Menu order follows your dishes and categories page; sections grow to fit their contents.</small></header>
     {uncategorizedCount > 0 && <p className="category-placement-notice">{uncategorizedCount} dishes have no category. <a href="/dashboard/menu">Assign their categories in Menu</a> so each dish appears in the right section.</p>}
     {!entries.length && <p><a href="/dashboard/menu">Add categories to your menu</a> to choose their artwork.</p>}
     {entries.map(category => {

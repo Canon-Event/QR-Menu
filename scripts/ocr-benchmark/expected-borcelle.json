@@ -1,0 +1,23 @@
+{
+  "source": "https://www.canva.com/templates/EAGF12S9HtA-yellow-and-black-restaurant-food-menu/",
+  "currencySymbol": "$",
+  "currencyCode": null,
+  "headings": ["MAIN COURSE", "APPETIZERS", "BEVERAGE"],
+  "rows": [
+    {"category":"MAIN COURSE","name":"Cheeseburger","price":34},
+    {"category":"MAIN COURSE","name":"Cheese Sandwich","price":22},
+    {"category":"MAIN COURSE","name":"Chicken Burgers","price":24},
+    {"category":"MAIN COURSE","name":"Spicy Chicken","price":33},
+    {"category":"MAIN COURSE","name":"Hot Dog","price":23},
+    {"category":"APPETIZERS","name":"Fruit Salad","price":13},
+    {"category":"APPETIZERS","name":"Cocktails","price":12},
+    {"category":"APPETIZERS","name":"Nuggets","price":14},
+    {"category":"APPETIZERS","name":"Sandwich","price":13},
+    {"category":"APPETIZERS","name":"French Fries","price":15},
+    {"category":"BEVERAGE","name":"Milk Shake","price":34},
+    {"category":"BEVERAGE","name":"Iced Tea","price":22},
+    {"category":"BEVERAGE","name":"Orange Juice","price":24},
+    {"category":"BEVERAGE","name":"Lemon Tea","price":33},
+    {"category":"BEVERAGE","name":"Iced Coffee","price":23}
+  ]
+}

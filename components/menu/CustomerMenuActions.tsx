@@ -1,11 +1,13 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Dish, Restaurant } from '@/types'
 import { formatCurrency } from '@/lib/currency'
+import { pendingOrder, type PendingOrder } from '@/lib/order-request'
+import { TableVerification, useTableVerification } from './TableVerification'
 
-export default function CustomerMenuActions({ restaurant, dishes }: { restaurant: Restaurant; dishes: Dish[] }) {
+export default function CustomerMenuActions({ restaurant, dishes, tableScan = null }: { restaurant: Restaurant; dishes: Dish[]; tableScan?: string | null }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [cart, setCart] = useState<Record<string, number>>({})
@@ -14,9 +16,11 @@ export default function CustomerMenuActions({ restaurant, dishes }: { restaurant
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const pending = useRef<PendingOrder | null>(null)
+  const verified = useTableVerification(restaurant.slug, Boolean(restaurant.table_verification_required) && restaurant.menu_mode === 'ordering', tableScan)
   useEffect(() => {
-    const key = 'qrmenu-visitor-id'; let session = localStorage.getItem(key)
-    if (!session) { session = crypto.randomUUID(); localStorage.setItem(key, session) }
+    const key = 'qrmenu-visitor-id'; let session = crypto.randomUUID()
+    try { session = localStorage.getItem(key) || session; localStorage.setItem(key, session) } catch { /* Browsing works with disabled storage. */ }
     fetch('/api/public/visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: restaurant.slug, session }), keepalive: true }).catch(() => {})
   }, [restaurant.slug])
   const count = Object.values(cart).reduce((sum, qty) => sum + qty, 0)
@@ -25,11 +29,18 @@ export default function CustomerMenuActions({ restaurant, dishes }: { restaurant
   async function checkout(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError('')
     try {
-      const response = await fetch('/api/public/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: restaurant.slug, idempotencyKey: crypto.randomUUID(), customerName, phone, note, items: Object.entries(cart).map(([dishId, quantity]) => ({ dishId, quantity })) }) })
+      if (!verified.allowed) throw new Error('Ask your waiter to approve this phone before ordering.')
+      const draft = { context: verified.access.reference || '', slug: restaurant.slug, customerName, phone, note, items: Object.entries(cart).map(([dishId, quantity]) => ({ dishId, quantity })) }
+      let storage: Storage | null = null
+      try { storage = sessionStorage } catch { /* Private browser storage may be unavailable. */ }
+      pending.current = pendingOrder(storage, draft, pending.current)
+      const response = await fetch('/api/public/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...draft, tableScan, idempotencyKey: pending.current.key }) })
       const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.error || 'Could not place order.')
+      try { storage?.removeItem(`wiit-order:${restaurant.slug}`) } catch {}
+      pending.current = null
       router.push(`/order/${result.public_token}`)
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not place order.'); setBusy(false) }
   }
   if (restaurant.menu_mode !== 'ordering') return <p className="customer-menu-notice">Please place your order with a staff member.</p>
-  return <><button className="customer-order-button" onClick={() => setOpen(true)}>Order now {count > 0 && <span>{count}</span>}</button>{open && <div className="customer-order-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false) }}><section className="customer-order-sheet"><header><div><h2>Your order</h2><p>{restaurant.name}</p></div><button onClick={() => setOpen(false)} aria-label="Close">×</button></header><div className="customer-dish-list">{dishes.map(dish => <article key={dish.id}><div><b>{dish.name}</b><small>{formatCurrency(dish.price, restaurant.currency)}</small></div><div className="customer-quantity">{cart[dish.id] > 0 && <button onClick={() => change(dish.id, -1)}>−</button>}<span>{cart[dish.id] || 0}</span><button onClick={() => change(dish.id, 1)}>+</button></div></article>)}</div>{count > 0 && <form className="customer-checkout" onSubmit={checkout}><div className="customer-total"><span>Total</span><b>{formatCurrency(total, restaurant.currency)}</b></div><label>Name<input required minLength={2} maxLength={100} value={customerName} onChange={event => setCustomerName(event.target.value)} /></label><label>Phone <span>(optional)</span><input type="tel" maxLength={30} value={phone} onChange={event => setPhone(event.target.value)} /></label><label>Note <span>(optional)</span><textarea maxLength={500} value={note} onChange={event => setNote(event.target.value)} placeholder="Table number, allergies, or requests" /></label>{error && <p className="customer-order-error">{error}</p>}<button className="customer-place-order" disabled={busy}>{busy ? 'Placing order…' : 'Confirm order'}</button><small>Prices and availability are verified when you order.</small></form>}</section></div>}</>
+  return <>{restaurant.table_verification_required && <TableVerification verification={verified} canScan={Boolean(tableScan)} />}<button className="customer-order-button" disabled={!verified.allowed} onClick={() => setOpen(true)}>Order now {count > 0 && <span>{count}</span>}</button>{open && <div className="customer-order-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false) }}><section className="customer-order-sheet"><header><div><h2>Your order</h2><p>{restaurant.name}</p></div><button onClick={() => setOpen(false)} aria-label="Close">×</button></header><div className="customer-dish-list">{dishes.map(dish => <article key={dish.id}><div><b>{dish.name}</b><small>{formatCurrency(dish.price, restaurant.currency)}</small></div><div className="customer-quantity">{cart[dish.id] > 0 && <button onClick={() => change(dish.id, -1)}>−</button>}<span>{cart[dish.id] || 0}</span><button onClick={() => change(dish.id, 1)}>+</button></div></article>)}</div>{count > 0 && <form className="customer-checkout" onSubmit={checkout}><div className="customer-total"><span>Total</span><b>{formatCurrency(total, restaurant.currency)}</b></div><label>Name<input required minLength={2} maxLength={100} value={customerName} onChange={event => setCustomerName(event.target.value)} /></label><label>Phone <span>(optional)</span><input type="tel" maxLength={30} value={phone} onChange={event => setPhone(event.target.value)} /></label><label>Note <span>(optional)</span><textarea maxLength={500} value={note} onChange={event => setNote(event.target.value)} placeholder="Table number, allergies, or requests" /></label>{error && <p className="customer-order-error">{error}</p>}<button className="customer-place-order" disabled={busy || !verified.allowed}>{busy ? 'Placing order…' : 'Confirm order'}</button><small>Prices and availability are verified when you order.</small></form>}</section></div>}</>
 }

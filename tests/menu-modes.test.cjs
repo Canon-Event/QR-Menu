@@ -53,17 +53,20 @@ const jsonRequest = (path, body, method = 'POST') => new Request(`https://exampl
 const requestSecurity = { readJsonBody: request => request.json(), createRateLimiter: () => () => false, clientIp: () => 'test' }
 
 function publicOrderRoute(menuMode, options = {}) {
-  const db = database(({ table, operation }) => {
-    if (table === 'restaurants') return { data: options.lookupError ? null : { id: restaurantId, currency: 'INR', menu_mode: menuMode }, error: options.lookupError ?? null }
-    if (table === 'orders' && operation === 'select') return { data: options.existing ?? null }
-    if (table === 'dishes') return { data: [{ id: dishId, name: 'Salad', price: 240 }] }
-    if (table === 'orders' && operation === 'insert') return { data: { id: orderId, public_token: token, order_number: 7 }, error: null }
-    return { error: null }
-  })
+  const db = { calls: [], async rpc(name, args) {
+    db.calls.push({ name, args })
+    if (options.lookupError) return { error: options.lookupError }
+    if (options.existing) return { data: { ...options.existing, duplicate: true } }
+    if (menuMode !== 'ordering') return { error: { code: '42501', message: 'This restaurant takes orders verbally.' } }
+    return { data: { public_token: token, order_number: 7, duplicate: false } }
+  } }
   const route = loadRoute('app/api/public/orders/route.ts', {
     '@/lib/request-security': requestSecurity,
     '@/lib/menu-api': { rejectUnsafeRequest: () => null },
     '@/lib/supabase': { supabaseAdmin: () => db },
+    '@/lib/orders': loadRoute('lib/orders.ts', {}),
+    '@/lib/pos': { UUID: /^[0-9a-f-]{36}$/i },
+    '@/lib/table-access-server': { accessToken: () => null, tokenHash: value => value, tableIpHash: () => 'a'.repeat(64), tableResponse: data => Response.json(data, { status: data.http_status || 200 }) },
   })
   return { ...route, db }
 }
@@ -73,14 +76,14 @@ test('view-only mode rejects phone checkout before reading dishes or creating or
   const response = await POST(jsonRequest('/api/public/orders', orderBody))
   assert.equal(response.status, 403)
   assert.match((await response.json()).error, /verbally/)
-  assert.ok(db.calls.every(call => call.operation === 'select' && call.table !== 'dishes'))
+  assert.equal(db.calls[0].name, 'orders_submit_table')
 })
 
 test('missing or invalid mode cannot enable mobile ordering', async () => {
   for (const mode of [undefined, null, 'invalid']) {
     const { POST, db } = publicOrderRoute(mode)
     assert.equal((await POST(jsonRequest('/api/public/orders', orderBody))).status, 403)
-    assert.ok(db.calls.every(call => call.operation === 'select'))
+    assert.equal(db.calls[0].name, 'orders_submit_table')
   }
 })
 
@@ -90,16 +93,13 @@ test('database lookup errors do not accept an order', async () => {
   assert.equal(db.calls.length, 1)
 })
 
-test('ordering mode submits quantities using the restaurant dish prices', async () => {
+test('ordering sends dish IDs and quantities to the transaction, never browser totals or prices', async () => {
   const { POST, db } = publicOrderRoute('ordering')
   const response = await POST(jsonRequest('/api/public/orders', { ...orderBody, total: 1 }))
   assert.equal(response.status, 201)
   assert.equal((await response.json()).public_token, token)
-  const order = db.calls.find(call => call.table === 'orders' && call.operation === 'insert')
-  assert.equal(order.payload.total, 480)
-  const items = db.calls.find(call => call.table === 'order_items' && call.operation === 'insert')
-  assert.equal(items.payload[0].quantity, 2)
-  assert.equal(items.payload[0].line_total, 480)
+  assert.deepEqual(db.calls[0].args.p_items, [{ dishId, quantity: 2 }])
+  assert.equal('total' in db.calls[0].args, false)
 })
 
 test('an already placed order remains accessible on retry after switching to view only', async () => {
@@ -108,7 +108,7 @@ test('an already placed order remains accessible on retry after switching to vie
   const response = await POST(jsonRequest('/api/public/orders', orderBody))
   assert.equal(response.status, 200)
   assert.deepEqual(await response.json(), existing)
-  assert.ok(db.calls.every(call => call.operation === 'select'))
+  assert.equal(db.calls[0].name, 'orders_submit_table')
 })
 
 function settingsRoute(authError = null, initialSettings = {}) {

@@ -7,6 +7,10 @@ import { parseCategoryPresentation } from '@/lib/menu-layout'
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const colorPattern = /^#[0-9a-f]{6}$/i
+// Menu messages and opening hours are intentionally multiline in the editor.
+const cleanMenuMultiline = (value: unknown, limit: number) => typeof value === 'string'
+  ? value.replace(/\r\n?/g, '\n').split('\n').map(line => cleanText(line, limit)).join('\n').trim().slice(0, limit)
+  : ''
 
 export async function PATCH(request: Request) {
   const unsafe = rejectUnsafeRequest(request); if (unsafe) return unsafe
@@ -69,15 +73,15 @@ export async function PATCH(request: Request) {
       categoryTagline: cleanText(body?.categoryTagline, 100),
       thankYouTitle: cleanText(body?.thankYouTitle, 80),
       thankYouSubtitle: cleanText(body?.thankYouSubtitle, 100),
-      thankYouMessage: cleanText(body?.thankYouMessage, 240),
-      openingHours: cleanText(body?.openingHours, 160),
+      thankYouMessage: cleanMenuMultiline(body?.thankYouMessage, 240),
+      openingHours: cleanMenuMultiline(body?.openingHours, 160),
       coverMenuNote: cleanText(body?.coverMenuNote, 140),
       coverFooter: cleanText(body?.coverFooter, 140),
       socialHandle: cleanText(body?.socialHandle, 80),
       reserveLabel: cleanText(body?.reserveLabel, 80),
-      reserveMessage: cleanText(body?.reserveMessage, 140),
+      reserveMessage: cleanMenuMultiline(body?.reserveMessage, 140),
       ingredientNoteTitle: cleanText(body?.ingredientNoteTitle, 100),
-      ingredientNote: cleanText(body?.ingredientNote, 300),
+      ingredientNote: cleanMenuMultiline(body?.ingredientNote, 300),
       closingFooter: cleanText(body?.closingFooter, 140),
     }
     const artwork = {

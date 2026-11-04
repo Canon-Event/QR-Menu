@@ -6,6 +6,14 @@ import './templates.css'
 import './responsive.css'
 import './menu-modes.css'
 import './category-layouts.css'
+import './dashboard-shell.css'
+import './menu-design-system.css'
+import './menu-editor.css'
+import './loyalty.css'
+import './pos.css'
+import './notifications.css'
+import './ai-menu.css'
+import './menu-studio.css'
 
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope' })
 const dmSerif = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-dm-serif' })

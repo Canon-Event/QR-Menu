@@ -2,8 +2,8 @@
 
 import type { MenuData, Dish, Category } from '@/types'
 import { formatCurrency } from '@/lib/currency'
-import HeritageMenuCover from '@/components/menu/HeritageMenuCover'
-import HeritageVintagePages from '@/components/menu/HeritageVintagePages'
+import MenuDocument from '@/components/menu/MenuDocument'
+
 
 interface Props { data: MenuData }
 
@@ -42,6 +42,8 @@ function DishRow({ dish, currency }: { dish: Dish; currency: string }) {
 export default function MenuTier1({ data }: Props) {
   const { restaurant, categories, dishes } = data
 
+  if (restaurant.template === 'A') return <MenuDocument data={data} />
+
   const grouped = categories.map((cat: Category) => ({
     category: cat,
     dishes: dishes.filter((d: Dish) => d.category_id === cat.id),
@@ -51,7 +53,7 @@ export default function MenuTier1({ data }: Props) {
 
   return (
     <div className={`public-menu template-${restaurant.template.toLowerCase()} min-h-screen bg-white max-w-lg mx-auto ${restaurant.template === 'A' ? 'heritage-menu-shell' : 'px-4 py-6'}`}>
-      {restaurant.template === 'A' && <HeritageMenuCover restaurant={restaurant} />}
+      
       {/* Header */}
       {restaurant.template !== 'A' && <div className="text-center mb-8">
         {restaurant.logo_url && (
@@ -67,7 +69,7 @@ export default function MenuTier1({ data }: Props) {
       </div>}
 
       {/* Menu */}
-      {restaurant.template === 'A' ? <HeritageVintagePages data={data} /> : <div id="menu-content">
+      <div id="menu-content">
       {grouped.map(({ category, dishes: catDishes }) =>
         catDishes.length === 0 ? null : (
           <section key={category.id} className={restaurant.template === 'A' ? 'heritage-menu-page' : 'mb-6'}>
@@ -91,7 +93,7 @@ export default function MenuTier1({ data }: Props) {
           ))}
         </section>
       )}
-      </div>}
+      </div>
     </div>
   )
 }
